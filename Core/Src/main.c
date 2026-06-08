@@ -152,7 +152,7 @@ int main(void)
 
 
     sprintf(buf,
-        "%ld.%02ld C",
+        "%6ld.%02ld C",
         temp / 100,
         temp % 100);
     OLED_ShowString(0,2,buf);
