@@ -8,6 +8,8 @@
 
 BME280_Calib_t bme280_calib;
 
+static int32_t t_fine;
+
 void BME280_ReadCalibration(void)
 {
     bme280_calib.dig_T1 =
@@ -94,14 +96,53 @@ int32_t BME280_ReadRawTemp(void)
         100
         );
 
-    printf("FA=%02X FB=%02X FC=%02X\r\n",
-       data[0],
-       data[1],
-       data[2]);
-
     adc_T =
      ((uint32_t)data[0] << 12)
    | ((uint32_t)data[1] << 4)
    | ((uint32_t)data[2] >> 4);
     return adc_T;
+}
+
+int32_t BME280_ReadTemperature(void)
+{
+    int32_t var1;
+    int32_t var2;
+    int32_t adc_T;
+    int32_t T;
+
+    adc_T = BME280_ReadRawTemp();
+
+
+    var1 = ((((adc_T >> 3) - ((int32_t)bme280_calib.dig_T1 << 1))) *
+        ((int32_t)bme280_calib.dig_T2)) >> 11;
+
+    var2 =
+(
+    (
+        (
+            (
+                (adc_T >> 4)
+                -
+                ((int32_t)bme280_calib.dig_T1)
+            )
+            *
+            (
+                (adc_T >> 4)
+                -
+                ((int32_t)bme280_calib.dig_T1)
+            )
+        )
+        >> 12
+    )
+    *
+    ((int32_t)bme280_calib.dig_T3)
+)
+>> 14;
+
+    t_fine = var1 + var2;
+
+    T = (t_fine * 5 + 128) >> 8;
+
+    return T;
+
 }

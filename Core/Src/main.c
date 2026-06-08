@@ -127,31 +127,39 @@ int main(void)
 
   BME280_ReadCalibration();
 
-  printf("T1 = %u\r\n", bme280_calib.dig_T1);
-  printf("T2 = %d\r\n", bme280_calib.dig_T2);
-  printf("T3 = %d\r\n", bme280_calib.dig_T3);
-
-
-
-
   /* USER CODE BEGIN 2 */
     BME280_WriteReg(0xF4,0x27);
+  int32_t temp;
+  char buf[20];
+
+
+  OLED_Clear();
+
+  OLED_ShowString(0,0,"Temp:");
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
+  while(1)
   {
 
-    printf("adc_T=%ld\r\n",
-           BME280_ReadRawTemp());
+
+    temp = BME280_ReadTemperature();
+
+
+
+
+    sprintf(buf,
+        "%ld.%02ld C",
+        temp / 100,
+        temp % 100);
+    OLED_ShowString(0,2,buf);
+
 
     HAL_Delay(1000);
-
-
-
-  }
-    /* USER CODE END WHILE */
+  }    /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }

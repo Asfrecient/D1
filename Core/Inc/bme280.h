@@ -28,4 +28,7 @@ void BME280_DumpCalibration(void);
 
 void BME280_ReadCalibration(void);
 
+int32_t BME280_ReadTemperature(void);
+
+
 #endif
