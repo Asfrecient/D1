@@ -124,13 +124,13 @@ int main(void)
 
   BME280_DumpCalibration();
 
-  uint16_t value;
+  BME280_ReadCalibration();
 
-  value = BME280_ReadU16(0x88);
+  printf("T1 = %u\r\n", bme280_calib.dig_T1);
+  printf("T2 = %d\r\n", bme280_calib.dig_T2);
+  printf("T3 = %d\r\n", bme280_calib.dig_T3);
 
-  printf("HEX = 0x%04X\r\n", value);
 
-  printf("DEC = %u\r\n", value);
 
 
   /* USER CODE BEGIN 2 */
