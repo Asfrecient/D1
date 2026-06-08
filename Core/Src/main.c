@@ -97,30 +97,13 @@ int main(void)
   MX_I2C1_Init();
   MX_SPI1_Init();
   MX_USART1_UART_Init();
-
-  printf("I2C Scan Start\r\n");
-
-  I2C_Scan();
-
-  printf("I2C Scan End\r\n");
-
   OLED_Init();
   BME280_Init();
-
-
   OLED_Clear();
-  OLED_ShowString(
-      0,
-      0,
-      "Hello STM32");
 
-  OLED_ShowString(
-      0,
-      2,
-      "Week1 Success");
-
-  printf("\r\n");
-  printf("====== BME280 TEST ======\r\n");
+  printf("I2C Scan Start\r\n");
+  I2C_Scan();
+  printf("I2C Scan End\r\n");
   /* USER CODE BEGIN 2 */
 
   char buf[20];

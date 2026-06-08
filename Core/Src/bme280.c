@@ -74,7 +74,6 @@ static void BME280_WriteReg(uint8_t reg,uint8_t data)
             100);
 }
 
-
 void BME280_DumpCalibration(void)
 {
     for(uint8_t reg = 0x88;
