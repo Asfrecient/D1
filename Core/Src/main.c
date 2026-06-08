@@ -73,6 +73,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -134,6 +135,7 @@ int main(void)
 
 
   /* USER CODE BEGIN 2 */
+    BME280_WriteReg(0xF4,0x27);
   /* USER CODE END 2 */
 
   /* Infinite loop */

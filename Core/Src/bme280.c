@@ -94,8 +94,6 @@ int32_t BME280_ReadRawTemp(void)
         100
         );
 
-
-
     printf("FA=%02X FB=%02X FC=%02X\r\n",
        data[0],
        data[1],
