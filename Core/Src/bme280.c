@@ -6,11 +6,46 @@
 
 #define BME280_ADDR (0x76 << 1)
 
-BME280_Calib_t bme280_calib;
+typedef struct
+{
+    uint16_t dig_T1;
+    int16_t  dig_T2;
+    int16_t  dig_T3;
 
+}BME280_Calib_t;
+
+
+static BME280_Calib_t bme280_calib;
 static int32_t t_fine;
 
-void BME280_ReadCalibration(void)
+
+//读寄存器
+static uint8_t BME280_ReadReg(uint8_t reg)
+{
+    uint8_t data = 0;
+
+    HAL_I2C_Mem_Read(
+            &hi2c1,
+            BME280_ADDR,
+            reg,
+            I2C_MEMADD_SIZE_8BIT,
+            &data,
+            1,
+            100);
+
+    return data;
+};
+
+static uint16_t BME280_ReadU16(uint8_t reg) {
+    uint8_t lsb;
+    uint8_t msb;
+    lsb = BME280_ReadReg(reg);
+    msb = BME280_ReadReg(reg + 1);
+    return ((uint16_t)msb << 8) | lsb;
+};
+
+
+static void BME280_ReadCalibration(void)
 {
     bme280_calib.dig_T1 =
         BME280_ReadU16(0x88) ;
@@ -25,33 +60,9 @@ void BME280_ReadCalibration(void)
 
 }
 
-//读寄存器
-uint8_t BME280_ReadReg(uint8_t reg)
-{
-    uint8_t data = 0;
-
-    HAL_I2C_Mem_Read(
-            &hi2c1,
-            BME280_ADDR,
-            reg,
-            I2C_MEMADD_SIZE_8BIT,
-            &data,
-            1,
-            100);
-
-    return data;
-}
-uint16_t BME280_ReadU16(uint8_t reg) {
-    uint8_t lsb;
-    uint8_t msb;
-    lsb = BME280_ReadReg(reg);
-    msb = BME280_ReadReg(reg + 1);
-    return ((uint16_t)msb << 8) | lsb;
-}
-
 
 //写寄存器
-void BME280_WriteReg(uint8_t reg,uint8_t data)
+static void BME280_WriteReg(uint8_t reg,uint8_t data)
 {
     HAL_I2C_Mem_Write(
             &hi2c1,
@@ -63,11 +74,6 @@ void BME280_WriteReg(uint8_t reg,uint8_t data)
             100);
 }
 
-//读ID
-uint8_t BME280_ReadID(void)
-{
-    return BME280_ReadReg(0xD0);
-}
 
 void BME280_DumpCalibration(void)
 {
@@ -81,7 +87,7 @@ void BME280_DumpCalibration(void)
     }
 }
 
-int32_t BME280_ReadRawTemp(void)
+static int32_t BME280_ReadRawTemp(void)
 {
 
     uint8_t data[3];
@@ -145,4 +151,11 @@ int32_t BME280_ReadTemperature(void)
 
     return T;
 
+}
+
+void BME280_Init(void)
+{
+    BME280_WriteReg(0xF4,0x27);
+
+    BME280_ReadCalibration();
 }

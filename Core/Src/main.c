@@ -105,6 +105,8 @@ int main(void)
   printf("I2C Scan End\r\n");
 
   OLED_Init();
+  BME280_Init();
+
 
   OLED_Clear();
   OLED_ShowString(
@@ -119,38 +121,20 @@ int main(void)
 
   printf("\r\n");
   printf("====== BME280 TEST ======\r\n");
-
-  printf("ID = 0x%02X\r\n",
-          BME280_ReadID());
-
-  BME280_DumpCalibration();
-
-  BME280_ReadCalibration();
-
   /* USER CODE BEGIN 2 */
-    BME280_WriteReg(0xF4,0x27);
-  int32_t temp;
-  char buf[20];
 
+  char buf[20];
+  int32_t temp;
 
   OLED_Clear();
-
   OLED_ShowString(0,0,"Temp:");
-
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while(1)
   {
-
-
     temp = BME280_ReadTemperature();
-
-
-
-
     sprintf(buf,
         "%6ld.%02ld C",
         temp / 100,
