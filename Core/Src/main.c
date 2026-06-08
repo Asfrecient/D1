@@ -73,7 +73,6 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-  uint8_t ctrl_meas = 0x27;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -124,6 +123,14 @@ int main(void)
           BME280_ReadID());
 
   BME280_DumpCalibration();
+
+  uint16_t value;
+
+  value = BME280_ReadU16(0x88);
+
+  printf("HEX = 0x%04X\r\n", value);
+
+  printf("DEC = %u\r\n", value);
 
 
   /* USER CODE BEGIN 2 */

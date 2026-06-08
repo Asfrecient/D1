@@ -23,6 +23,14 @@ uint8_t BME280_ReadReg(uint8_t reg)
 
     return data;
 }
+uint16_t BME280_ReadU16(uint8_t reg) {
+    uint8_t lsb;
+    uint8_t msb;
+    lsb = BME280_ReadReg(reg);
+    msb = BME280_ReadReg(reg + 1);
+    return ((uint16_t)msb << 8) | lsb;
+}
+
 
 //写寄存器
 void BME280_WriteReg(uint8_t reg,uint8_t data)
