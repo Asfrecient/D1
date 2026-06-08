@@ -7,6 +7,30 @@
 #define BME280_ADDR (0x76 << 1)
 
 
+typedef struct
+{
+    uint16_t dig_T1;
+    int16_t  dig_T2;
+    int16_t  dig_T3;
+} BME280_Calib_t;
+
+BME280_Calib_t bme280_calib;
+
+void BME280_ReadCalibration(void)
+{
+    bme280_calib.dig_T1 =
+        BME280_ReadU16(0x88) ;
+
+
+    bme280_calib.dig_T2 =
+        (int16_t)BME280_ReadU16(0x8A) ;
+
+
+    bme280_calib.dig_T3 =
+        (int16_t)BME280_ReadU16(0x8C) ;
+
+}
+
 //读寄存器
 uint8_t BME280_ReadReg(uint8_t reg)
 {
