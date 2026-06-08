@@ -137,7 +137,7 @@ int main(void)
     printf("adc_T=%ld\r\n",
            BME280_ReadRawTemp());
 
-    HAL_Delay(1500);
+    HAL_Delay(1000);
 
 
 
