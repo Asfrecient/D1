@@ -1,0 +1,48 @@
+# Build output
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+Testing/
+
+# Generated firmware/debug artifacts
+*.elf
+*.hex
+*.bin
+*.map
+*.list
+*.lst
+*.su
+*.o
+*.obj
+*.a
+*.d
+
+# Build tools
+.cmake/
+.ninja_deps
+.ninja_log
+build.ninja
+rules.ninja
+
+# IDE/user-local files
+.idea/
+.vscode/
+*.launch
+*.user
+*.uvguix.*
+*.uvoptx
+*.uvprojx
+*.dep
+*.ewp
+*.eww
+*.ewd
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
