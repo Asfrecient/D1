@@ -112,6 +112,13 @@ BME280
  */
 #define BME280_REG_DIG_T3     0x8C
 
+#define BME280_REG_DIG_H1    0xA1
+#define BME280_REG_DIG_H2    0xE1
+#define BME280_REG_DIG_H3    0xE3
+#define BME280_REG_DIG_H6    0xE7
+
+#define BME280_REG_HUM_MSB   0xFD
+
 typedef struct
 {
     /* temperature */
@@ -140,9 +147,7 @@ typedef struct
 
 } BME280_Calib_t;
 
-#define BME280_REG_DIG_H1    0xA1
-#define BME280_REG_DIG_H2    0xE1
-#define BME280_REG_DIG_H3    0xE3
+
 
 
 static BME280_Calib_t bme280_calib;
@@ -166,7 +171,9 @@ static uint8_t BME280_ReadReg(uint8_t reg)
     return data;
 }
 
-static uint16_t BME280_ReadU16(uint8_t reg)
+// 读取LSB在前、MSB在后的16位数据
+// 用于校准参数
+static uint16_t BME280_ReadLE16(uint8_t reg)
 {
     uint8_t lsb;
     uint8_t msb;
@@ -175,20 +182,72 @@ static uint16_t BME280_ReadU16(uint8_t reg)
     return ((uint16_t)msb << 8) | lsb;
 }
 
+// 读取LSB在后、MSB在前的16位数据
+static uint16_t BME280_ReadBE16(uint8_t reg)
+{
+    uint8_t msb;
+    uint8_t lsb;
+
+    msb = BME280_ReadReg(reg);
+    lsb = BME280_ReadReg(reg + 1);
+
+    return ((uint16_t)msb << 8) | lsb;
+}
+
+
 
 static void BME280_ReadCalibration(void)
 {
+
+
+
     bme280_calib.dig_T1 =
-        BME280_ReadU16(BME280_REG_DIG_T1) ;
+        BME280_ReadLE16(BME280_REG_DIG_T1) ;
 
 
     bme280_calib.dig_T2 =
-        (int16_t)BME280_ReadU16(BME280_REG_DIG_T2) ;
+        (int16_t)BME280_ReadLE16(BME280_REG_DIG_T2) ;
 
 
     bme280_calib.dig_T3 =
-        (int16_t)BME280_ReadU16(BME280_REG_DIG_T3) ;
+        (int16_t)BME280_ReadLE16(BME280_REG_DIG_T3) ;
 
+    bme280_calib.dig_H1 =
+        BME280_ReadReg(BME280_REG_DIG_H1) ;
+
+    bme280_calib.dig_H2 =
+        (int16_t)BME280_ReadLE16(BME280_REG_DIG_H2) ;
+
+    bme280_calib.dig_H3 =
+        BME280_ReadReg(BME280_REG_DIG_H3) ;
+
+
+    uint8_t e4;
+    uint8_t e5;
+    uint8_t e6;
+    e4 = BME280_ReadReg(0xE4);
+    e5 = BME280_ReadReg(0xE5);
+    e6 = BME280_ReadReg(0xE6);
+
+
+    bme280_calib.dig_H4 =
+    (int16_t)((e4 << 4) | (e5 & 0x0F));
+
+    bme280_calib.dig_H5 =
+        (int16_t)((e6 << 4) | (e5 >> 4));
+
+    bme280_calib.dig_H6 =
+    (int8_t)BME280_ReadReg(BME280_REG_DIG_H6);
+}
+
+static void BME280_PrintHumidityCalib(void)
+{
+    printf("H1=%u\r\n", bme280_calib.dig_H1);
+    printf("H2=%d\r\n", bme280_calib.dig_H2);
+    printf("H3=%u\r\n", bme280_calib.dig_H3);
+    printf("H4=%d\r\n", bme280_calib.dig_H4);
+    printf("H5=%d\r\n", bme280_calib.dig_H5);
+    printf("H6=%d\r\n", bme280_calib.dig_H6);
 }
 
 
@@ -226,6 +285,88 @@ static int32_t BME280_ReadRawTemp(void)
    | ((uint32_t)data[1] << 4)
    | ((uint32_t)data[2] >> 4);
     return adc_T;
+}
+
+static int32_t BME280_ReadRawHumidity(void)
+{
+    return BME280_ReadBE16(BME280_REG_HUM_MSB);
+}
+
+int32_t BME280_ReadHumidity(void)
+{
+    int32_t adc_H;
+    int32_t v_x1_u32r;
+
+
+    adc_H = BME280_ReadRawHumidity();
+
+    printf("adc_H=%ld\r\n", adc_H);
+    printf("t_fine=%ld\r\n", t_fine);
+
+    v_x1_u32r = t_fine - 76800;
+    printf("v1=%ld\r\n", v_x1_u32r);
+
+    int32_t temp1;
+    int32_t temp2;
+    int32_t temp3;
+
+    temp1 = (adc_H << 14);
+
+    temp2 = ((int32_t)bme280_calib.dig_H4 << 20);
+
+    temp3 = ((int32_t)bme280_calib.dig_H5 * v_x1_u32r);
+
+    printf("temp1=%ld\r\n", temp1);
+    printf("temp2=%ld\r\n", temp2);
+    printf("temp3=%ld\r\n", temp3);
+
+    v_x1_u32r =
+(
+    (
+        temp1
+        - temp2
+        - temp3
+        + 16384
+    )
+    >> 15
+);
+
+    printf("v2=%ld\r\n", v_x1_u32r);
+
+    v_x1_u32r =
+(
+    v_x1_u32r *
+    (
+        (
+            (
+                (
+                    (
+                        (v_x1_u32r *
+                         ((int32_t)bme280_calib.dig_H6))
+                        >> 10
+                    )
+                    *
+                    (
+                        (
+                            (v_x1_u32r *
+                             ((int32_t)bme280_calib.dig_H3))
+                            >> 11
+                        )
+                        + 32768
+                    )
+                )
+                >> 10
+            )
+            + 2097152
+        )
+        *
+        ((int32_t)bme280_calib.dig_H2)
+        + 8192
+    )
+    >> 14
+);
+
+    printf("v3=%ld\r\n", v_x1_u32r);
 }
 
 int32_t BME280_ReadTemperature(void)
@@ -279,6 +420,7 @@ void BME280_Init(void)
     BME280_WriteReg(BME280_REG_CTRL_MEAS,0x27);// temp/press x1 + normal
 
     BME280_ReadCalibration();
+    BME280_PrintHumidityCalib();
 }
 
 // static void BME280_DumpCalibration(void)
@@ -292,3 +434,4 @@ void BME280_Init(void)
 //                 BME280_ReadReg(reg));
 //     }
 // }
+

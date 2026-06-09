@@ -123,6 +123,8 @@ int main(void)
         temp / 100,
         temp % 100);
     OLED_ShowString(0,2,buf);
+    BME280_ReadHumidity();
+
 
 
     HAL_Delay(1000);
