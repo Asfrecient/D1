@@ -56,6 +56,30 @@ void I2C_Scan(void);
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+static void BME280_ShowData(void)
+{
+  char str[20];
+
+  int32_t temp;
+  int32_t hum;
+
+  temp = BME280_ReadTemperature();
+  hum  = BME280_ReadHumidity();
+
+  sprintf(str,
+          "T:%2ld.%02ldC",
+          temp / 100,
+          temp % 100);
+
+  OLED_ShowString(0,0,str);
+
+  sprintf(str,
+          "H:%2ld.%02ld%%",
+          hum / 1024,
+          (hum % 1024) * 100 / 1024);
+
+  OLED_ShowString(0,2,str);
+}
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -106,34 +130,15 @@ int main(void)
   printf("I2C Scan End\r\n");
   /* USER CODE BEGIN 2 */
 
-  char str[20];
-  int32_t temp;
-  int32_t hum;
 
   OLED_Clear();
-  OLED_ShowString(0,0,"Temp:");
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while(1)
   {
-    temp = BME280_ReadTemperature();
-    hum = BME280_ReadHumidity();
-
-    sprintf(str,"T:%2ld.%02ldC",
-        temp/100,
-        temp%100);
-
-    OLED_ShowString(0,0,str);
-
-    sprintf(str,"H:%2ld.%02ld%%",
-            hum/1024,
-            (hum%1024)*100/1024);
-
-    OLED_ShowString(0,2,str);
-
-
+    BME280_ShowData();
 
     HAL_Delay(1000);
   }    /* USER CODE END WHILE */

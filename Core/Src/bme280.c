@@ -414,12 +414,10 @@ int32_t BME280_ReadTemperature(void)
 
 void BME280_Init(void)
 {
-
     BME280_WriteReg(BME280_REG_CTRL_HUM, 0x01);// humidity x1
     BME280_WriteReg(BME280_REG_CTRL_MEAS,0x27);// temp/press x1 + normal
 
     BME280_ReadCalibration();
-    BME280_PrintHumidityCalib();
 }
 
 // static void BME280_DumpCalibration(void)
