@@ -62,9 +62,13 @@ static void BME280_ShowData(void)
 
   int32_t temp;
   int32_t hum;
+  int32_t press;
+
 
   temp = BME280_ReadTemperature();
   hum  = BME280_ReadHumidity();
+  press = BME280_ReadPressure();
+
 
   sprintf(str,
           "T:%2ld.%02ldC",
@@ -138,8 +142,9 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while(1)
   {
-    BME280_ShowData();
-
+    // BME280_ShowData();
+    BME280_ReadTemperature();
+    BME280_ReadPressure();
     HAL_Delay(1000);
   }    /* USER CODE END WHILE */
 

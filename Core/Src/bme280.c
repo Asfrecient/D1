@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 
+#include <stdint.h>
+
 #include "i2c.h"
 
 #define BME280_ADDR (0x76 << 1)
@@ -119,6 +121,18 @@ BME280
 
 #define BME280_REG_HUM_MSB   0xFD
 
+#define BME280_REG_DIG_P1    0x8E
+#define BME280_REG_DIG_P2    0x90
+#define BME280_REG_DIG_P3    0x92
+#define BME280_REG_DIG_P4    0x94
+#define BME280_REG_DIG_P5    0x96
+#define BME280_REG_DIG_P6    0x98
+#define BME280_REG_DIG_P7    0x9A
+#define BME280_REG_DIG_P8    0x9C
+#define BME280_REG_DIG_P9    0x9E
+//气压的MSB
+#define BME280_REG_PRESS_MSB  0xF7
+
 typedef struct
 {
     /* temperature */
@@ -212,8 +226,7 @@ static int16_t BME280_SignExtend12(uint16_t value)
 
 static void BME280_ReadCalibration(void)
 {
-
-
+    //////////////////温度
 
     bme280_calib.dig_T1 =
         BME280_ReadLE16(BME280_REG_DIG_T1) ;
@@ -225,6 +238,8 @@ static void BME280_ReadCalibration(void)
 
     bme280_calib.dig_T3 =
         (int16_t)BME280_ReadLE16(BME280_REG_DIG_T3) ;
+
+    ///////////////////////湿度
 
     bme280_calib.dig_H1 =
         BME280_ReadReg(BME280_REG_DIG_H1) ;
@@ -252,6 +267,34 @@ static void BME280_ReadCalibration(void)
 
     bme280_calib.dig_H6 =
     (int8_t)BME280_ReadReg(BME280_REG_DIG_H6);
+
+    /////////////////////////////气压
+    bme280_calib.dig_P1 =
+        BME280_ReadLE16(BME280_REG_DIG_P1);
+
+    bme280_calib.dig_P2 =
+        (int16_t)BME280_ReadLE16(BME280_REG_DIG_P2);
+
+    bme280_calib.dig_P3 =
+        (int16_t)BME280_ReadLE16(BME280_REG_DIG_P3);
+
+    bme280_calib.dig_P4 =
+        (int16_t)BME280_ReadLE16(BME280_REG_DIG_P4);
+
+    bme280_calib.dig_P5 =
+        (int16_t)BME280_ReadLE16(BME280_REG_DIG_P5);
+
+    bme280_calib.dig_P6 =
+        (int16_t)BME280_ReadLE16(BME280_REG_DIG_P6);
+
+    bme280_calib.dig_P7 =
+        (int16_t)BME280_ReadLE16(BME280_REG_DIG_P7);
+
+    bme280_calib.dig_P8 =
+        (int16_t)BME280_ReadLE16(BME280_REG_DIG_P8);
+
+    bme280_calib.dig_P9 =
+        (int16_t)BME280_ReadLE16(BME280_REG_DIG_P9);
 }
 
 static void BME280_PrintHumidityCalib(void)
@@ -304,6 +347,73 @@ static int32_t BME280_ReadRawTemp(void)
 static int32_t BME280_ReadRawHumidity(void)
 {
     return BME280_ReadBE16(BME280_REG_HUM_MSB);
+}
+
+static int32_t BME280_ReadRawPressure(void)
+{
+    uint8_t data[3];
+    int32_t adc_P;
+
+    HAL_I2C_Mem_Read(
+        &hi2c1,
+        BME280_ADDR,
+        BME280_REG_PRESS_MSB,
+        I2C_MEMADD_SIZE_8BIT,
+        data,
+        3,
+        100);
+
+    adc_P =
+        ((uint32_t)data[0] << 12)
+      | ((uint32_t)data[1] << 4)
+      | ((uint32_t)data[2] >> 4);
+
+    return adc_P;
+}
+
+
+int32_t BME280_ReadTemperature(void)
+{
+    int32_t var1;
+    int32_t var2;
+    int32_t adc_T;
+    int32_t T;
+
+    adc_T = BME280_ReadRawTemp();
+
+
+    var1 = ((((adc_T >> 3) - ((int32_t)bme280_calib.dig_T1 << 1))) *
+        ((int32_t)bme280_calib.dig_T2)) >> 11;
+
+    var2 =
+(
+    (
+        (
+            (
+                (adc_T >> 4)
+                -
+                ((int32_t)bme280_calib.dig_T1)
+            )
+            *
+            (
+                (adc_T >> 4)
+                -
+                ((int32_t)bme280_calib.dig_T1)
+            )
+        )
+        >> 12
+    )
+    *
+    ((int32_t)bme280_calib.dig_T3)
+)
+>> 14;
+
+    t_fine = var1 + var2;
+
+    T = (t_fine * 5 + 128) >> 8;
+
+    return T;
+
 }
 
 int32_t BME280_ReadHumidity(void)
@@ -368,49 +478,34 @@ int32_t BME280_ReadHumidity(void)
     return v_x1_u32r >> 12;
 }
 
-int32_t BME280_ReadTemperature(void)
+int32_t BME280_ReadPressure(void)
 {
-    int32_t var1;
-    int32_t var2;
-    int32_t adc_T;
-    int32_t T;
+    int32_t adc_P;
 
-    adc_T = BME280_ReadRawTemp();
+    int64_t var1;
+    int64_t var2;
+    int64_t p;
 
+    adc_P = BME280_ReadRawPressure();
 
-    var1 = ((((adc_T >> 3) - ((int32_t)bme280_calib.dig_T1 << 1))) *
-        ((int32_t)bme280_calib.dig_T2)) >> 11;
+    /* 这里后面填Bosch公式 */
+    var1 = ((int64_t)t_fine) - 128000;
 
-    var2 =
-(
-    (
-        (
-            (
-                (adc_T >> 4)
-                -
-                ((int32_t)bme280_calib.dig_T1)
-            )
-            *
-            (
-                (adc_T >> 4)
-                -
-                ((int32_t)bme280_calib.dig_T1)
-            )
-        )
-        >> 12
-    )
-    *
-    ((int32_t)bme280_calib.dig_T3)
-)
->> 14;
+    var2 = var1 * var1 * (int64_t)bme280_calib.dig_P6;
 
-    t_fine = var1 + var2;
+    var2 = var2 +
+           ((var1 * (int64_t)bme280_calib.dig_P5) << 17);
 
-    T = (t_fine * 5 + 128) >> 8;
+    var2 = var2 +
+           (((int64_t)bme280_calib.dig_P4) << 35);
 
-    return T;
+    printf("adc_P=%ld\r\n", adc_P);
 
+    printf("var1=%lld\r\n", var1);
+    printf("var2=%lld\r\n", var2);
+    return 0;
 }
+
 
 void BME280_Init(void)
 {
@@ -418,16 +513,18 @@ void BME280_Init(void)
     BME280_WriteReg(BME280_REG_CTRL_MEAS,0x27);// temp/press x1 + normal
 
     BME280_ReadCalibration();
+    printf("P1=%u\r\n", bme280_calib.dig_P1);
+    printf("P2=%d\r\n", bme280_calib.dig_P2);
+    printf("P3=%d\r\n", bme280_calib.dig_P3);
+    printf("P4=%d\r\n", bme280_calib.dig_P4);
+    printf("P5=%d\r\n", bme280_calib.dig_P5);
+    printf("P6=%d\r\n", bme280_calib.dig_P6);
+    printf("P7=%d\r\n", bme280_calib.dig_P7);
+    printf("P8=%d\r\n", bme280_calib.dig_P8);
+    printf("P9=%d\r\n", bme280_calib.dig_P9);
+
+    printf("adc_P=%ld\r\n", BME280_ReadRawPressure());
+
 }
 
-// static void BME280_DumpCalibration(void)
-// {
-//     for(uint8_t reg = 0x88;
-//         reg <= 0xA1;
-//         reg++)
-//     {
-//         printf("0x%02X = 0x%02X\r\n",
-//                 reg,
-//                 BME280_ReadReg(reg));
-//     }
-// }
+
