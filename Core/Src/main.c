@@ -106,8 +106,9 @@ int main(void)
   printf("I2C Scan End\r\n");
   /* USER CODE BEGIN 2 */
 
-  char buf[20];
+  char str[20];
   int32_t temp;
+  int32_t hum;
 
   OLED_Clear();
   OLED_ShowString(0,0,"Temp:");
@@ -118,12 +119,19 @@ int main(void)
   while(1)
   {
     temp = BME280_ReadTemperature();
-    sprintf(buf,
-        "%6ld.%02ld C",
-        temp / 100,
-        temp % 100);
-    OLED_ShowString(0,2,buf);
-    BME280_ReadHumidity();
+    hum = BME280_ReadHumidity();
+
+    sprintf(str,"T:%2ld.%02ldC",
+        temp/100,
+        temp%100);
+
+    OLED_ShowString(0,0,str);
+
+    sprintf(str,"H:%2ld.%02ld%%",
+            hum/1024,
+            (hum%1024)*100/1024);
+
+    OLED_ShowString(0,2,str);
 
 
 
