@@ -37,6 +37,8 @@ add_executable(${CMAKE_PROJECT_NAME}
         Core/Src/oled_font.c
         Core/Inc/bme280.h
         Core/Src/bme280.c
+        App/Inc/app_display.h
+        App/Src/app_display.c
 )
 
 # Add STM32CubeMX generated sources
@@ -55,6 +57,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
+        Core/Inc
+        App/Inc
 )
 
 # Add project symbols (macros)

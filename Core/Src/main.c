@@ -65,39 +65,6 @@ void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN 0 */
 void I2C_Scan(void);
 
-static BME280_Data_t sensor;
-
-
-static void BME280_ShowData(void)
-{
-  char str[40];
-  BME280_ReadData(&sensor);
-
-  sprintf(str,
-          "T:%ld.%02ldC",
-          sensor.temperature / 100,
-          labs(sensor.temperature % 100));
-
-  OLED_ShowString(0,0,str);
-
-
-  sprintf(str,
-          "H:%2ld.%02ld%%",
-          sensor.humidity / 1024,
-          (sensor.humidity % 1024) * 100 / 1024);
-
-  OLED_ShowString(0,2,str);
-
-
-  sprintf(str,
-        "P:%ld.%02ldhPa",
-        sensor.pressure / 256 / 100,
-        sensor.pressure / 256 % 100);
-
-
-  OLED_ShowString(0,4,str);
-
-}
 /* USER CODE END 0 */
 
 /**
@@ -133,7 +100,10 @@ int main(void)
   MX_SPI1_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+  BME280_Init();
+  OLED_Init();
   OLED_Clear();
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -149,9 +119,6 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while(1)
   {
-    BME280_ShowData();
-
-    HAL_Delay(1000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
