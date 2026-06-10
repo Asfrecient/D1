@@ -20,6 +20,7 @@
 #include "main.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "i2c.h"
@@ -31,6 +32,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 void I2C_Scan(void);
+static BME280_Data_t sensor;
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -59,33 +61,31 @@ void SystemClock_Config(void);
 static void BME280_ShowData(void)
 {
   char str[40];
-
-  int32_t temp;
-  int32_t hum;
-  int32_t press;
-
-
-  temp = BME280_ReadTemperature();
-  hum  = BME280_ReadHumidity();
-  press = BME280_ReadPressure();
-
+  BME280_ReadData(&sensor);
 
   sprintf(str,
-          "T:%2ld.%02ldC",
-          temp / 100,
-          temp % 100);
+          "T:%ld.%02ldC",
+          sensor.temperature / 100,
+          labs(sensor.temperature % 100));
 
   OLED_ShowString(0,0,str);
 
+
   sprintf(str,
           "H:%2ld.%02ld%%",
-          hum / 1024,
-          (hum % 1024) * 100 / 1024);
+          sensor.humidity / 1024,
+          (sensor.humidity % 1024) * 100 / 1024);
 
   OLED_ShowString(0,2,str);
 
+  // sprintf(str,
+  //   "Press=%ld Pa", sensor.pressure / 256);
   sprintf(str,
-    "Press=%ld Pa", press / 256);
+        "P:%ld.%02ldhPa",
+        sensor.pressure / 256 / 100,
+        sensor.pressure / 256 % 100);
+
+
   OLED_ShowString(0,4,str);
 
 }

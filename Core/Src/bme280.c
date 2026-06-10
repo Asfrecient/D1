@@ -133,6 +133,7 @@ BME280
 //气压的MSB
 #define BME280_REG_PRESS_MSB  0xF7
 
+
 typedef struct
 {
     /* temperature */
@@ -160,8 +161,6 @@ typedef struct
     int8_t   dig_H6;
 
 } BME280_Calib_t;
-
-
 
 
 static BME280_Calib_t bme280_calib;
@@ -566,24 +565,24 @@ int32_t BME280_ReadPressure(void)
 return (int32_t)p;
 }
 
+void BME280_ReadData(BME280_Data_t *data)
+{
+    data->temperature =
+        BME280_ReadTemperature();
+
+    data->humidity =
+        BME280_ReadHumidity();
+
+    data->pressure =
+        BME280_ReadPressure();
+}
+
 
 void BME280_Init(void)
 {
     BME280_WriteReg(BME280_REG_CTRL_HUM, 0x01);// humidity x1
     BME280_WriteReg(BME280_REG_CTRL_MEAS,0x27);// temp/press x1 + normal
-
     BME280_ReadCalibration();
-    printf("P1=%u\r\n", bme280_calib.dig_P1);
-    printf("P2=%d\r\n", bme280_calib.dig_P2);
-    printf("P3=%d\r\n", bme280_calib.dig_P3);
-    printf("P4=%d\r\n", bme280_calib.dig_P4);
-    printf("P5=%d\r\n", bme280_calib.dig_P5);
-    printf("P6=%d\r\n", bme280_calib.dig_P6);
-    printf("P7=%d\r\n", bme280_calib.dig_P7);
-    printf("P8=%d\r\n", bme280_calib.dig_P8);
-    printf("P9=%d\r\n", bme280_calib.dig_P9);
-
-    printf("adc_P=%ld\r\n", BME280_ReadRawPressure());
 
 }
 
