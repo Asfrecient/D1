@@ -157,10 +157,7 @@ void StartSensorTask(void *argument)
   for(;;)
   {
     BME280_ReadData(&sensor);
-    printf("T=%ld H=%ld P=%ld\r\n",
-       sensor.temperature,
-       sensor.humidity,
-       sensor.pressure);
+
     osDelay(1000);
   }
   /* USER CODE END StartSensorTask */

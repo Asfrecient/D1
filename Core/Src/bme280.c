@@ -1,6 +1,7 @@
 #include "bme280.h"
 
 #include <stdint.h>
+#include <stdio.h>
 
 #include "i2c.h"
 
@@ -555,7 +556,7 @@ return (int32_t)p;
 
 void BME280_ReadData(BME280_Data_t *data)
 {
-
+    printf("Sensor Lock\r\n");
     osMutexAcquire(I2CMutex, osWaitForever);
     data->temperature =
         BME280_ReadTemperature();
@@ -565,7 +566,7 @@ void BME280_ReadData(BME280_Data_t *data)
 
     data->pressure =
         BME280_ReadPressure();
-
+    printf("Sensor Unlock\r\n");
     osMutexRelease(I2CMutex);
 }
 

@@ -13,6 +13,10 @@ extern BME280_Data_t sensor;
 void APP_DisplayUpdate(void)
 {
     char str[40];
+        printf("Display Lock\r\n");
+
+        osMutexAcquire(I2CMutex, osWaitForever);
+
 
     sprintf(str,
             "T:%ld.%02ldC",
@@ -34,4 +38,7 @@ void APP_DisplayUpdate(void)
             sensor.pressure / 256 % 100);
 
     OLED_ShowString(0,4,str);
+
+        printf("Display Unlock\r\n");
+        osMutexRelease(I2CMutex);
 }
