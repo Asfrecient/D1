@@ -58,7 +58,7 @@ void I2C_Scan(void);
 void SystemClock_Config(void);
 static void BME280_ShowData(void)
 {
-  char str[20];
+  char str[40];
 
   int32_t temp;
   int32_t hum;
@@ -83,6 +83,11 @@ static void BME280_ShowData(void)
           (hum % 1024) * 100 / 1024);
 
   OLED_ShowString(0,2,str);
+
+  sprintf(str,
+    "Press=%ld Pa", press / 256);
+  OLED_ShowString(0,4,str);
+
 }
 /* USER CODE BEGIN PFP */
 
@@ -142,9 +147,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while(1)
   {
-    // BME280_ShowData();
-    BME280_ReadTemperature();
-    BME280_ReadPressure();
+    BME280_ShowData();
+
     HAL_Delay(1000);
   }    /* USER CODE END WHILE */
 

@@ -499,11 +499,71 @@ int32_t BME280_ReadPressure(void)
     var2 = var2 +
            (((int64_t)bme280_calib.dig_P4) << 35);
 
-    printf("adc_P=%ld\r\n", adc_P);
+    var1 =
+    (
+        (
+            (var1 * var1 * (int64_t)bme280_calib.dig_P3)
+            >> 8
+        )
+        +
+        (
+            (var1 * (int64_t)bme280_calib.dig_P2)
+            << 12
+        )
+    );
 
-    printf("var1=%lld\r\n", var1);
-    printf("var2=%lld\r\n", var2);
-    return 0;
+    var1 =
+    (
+        (
+            (((int64_t)1) << 47)
+            + var1
+        )
+        *
+        ((int64_t)bme280_calib.dig_P1)
+    )
+    >> 33;
+
+    if (var1 == 0)
+    {
+        return 0;
+    }
+
+    p = 1048576 - adc_P;
+
+    p = (((p << 31) - var2) * 3125) / var1;
+
+    var1 =
+(
+    ((int64_t)bme280_calib.dig_P9)
+    *
+    (p >> 13)
+    *
+    (p >> 13)
+)
+>> 25;
+
+    var2 =
+    (
+        ((int64_t)bme280_calib.dig_P8)
+        * p
+    )
+    >> 19;
+
+    p =
+(
+    (
+        p
+        + var1
+        + var2
+    )
+    >> 8
+)
++
+(
+    ((int64_t)bme280_calib.dig_P7)
+    << 4
+);
+return (int32_t)p;
 }
 
 
