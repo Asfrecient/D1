@@ -4,6 +4,8 @@
 
 #include "i2c.h"
 
+#include "app_shared.h"
+
 #define BME280_ADDR (0x76 << 1)
 
 /* =====================================================
@@ -553,6 +555,8 @@ return (int32_t)p;
 
 void BME280_ReadData(BME280_Data_t *data)
 {
+
+    osMutexAcquire(I2CMutex, osWaitForever);
     data->temperature =
         BME280_ReadTemperature();
 
@@ -561,6 +565,8 @@ void BME280_ReadData(BME280_Data_t *data)
 
     data->pressure =
         BME280_ReadPressure();
+
+    osMutexRelease(I2CMutex);
 }
 
 

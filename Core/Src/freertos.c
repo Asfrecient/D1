@@ -50,6 +50,8 @@
 /* USER CODE BEGIN Variables */
 BME280_Data_t sensor;
 
+osMutexId_t I2CMutex;
+
 static StaticTask_t SensorTaskControlBlock;
 static StackType_t SensorTaskStack[512];
 static StaticTask_t DisplayTaskControlBlock;
@@ -98,6 +100,16 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
+  const osMutexAttr_t I2CMutex_attributes =
+  {
+    .name = "I2CMutex"
+};
+
+  I2CMutex = osMutexNew(&I2CMutex_attributes);
+  if (I2CMutex == NULL)
+  {
+    Error_Handler();
+  }
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */

@@ -39,6 +39,7 @@ add_executable(${CMAKE_PROJECT_NAME}
         Core/Src/bme280.c
         App/Inc/app_display.h
         App/Src/app_display.c
+        App/Inc/app_shared.h
 )
 
 # Add STM32CubeMX generated sources
