@@ -1,7 +1,5 @@
 #include "bme280.h"
 
-#include <stdio.h>
-
 #include <stdint.h>
 
 #include "i2c.h"
@@ -296,17 +294,6 @@ static void BME280_ReadCalibration(void)
         (int16_t)BME280_ReadLE16(BME280_REG_DIG_P9);
 }
 
-static void BME280_PrintHumidityCalib(void)
-{
-    printf("H1=%u\r\n", bme280_calib.dig_H1);
-    printf("H2=%d\r\n", bme280_calib.dig_H2);
-    printf("H3=%u\r\n", bme280_calib.dig_H3);
-    printf("H4=%d\r\n", bme280_calib.dig_H4);
-    printf("H5=%d\r\n", bme280_calib.dig_H5);
-    printf("H6=%d\r\n", bme280_calib.dig_H6);
-}
-
-
 //写寄存器
 static void BME280_WriteReg(uint8_t reg,uint8_t data)
 {
@@ -487,7 +474,6 @@ int32_t BME280_ReadPressure(void)
 
     adc_P = BME280_ReadRawPressure();
 
-    /* 这里后面填Bosch公式 */
     var1 = ((int64_t)t_fine) - 128000;
 
     var2 = var1 * var1 * (int64_t)bme280_calib.dig_P6;
@@ -585,5 +571,4 @@ void BME280_Init(void)
     BME280_ReadCalibration();
 
 }
-
 
