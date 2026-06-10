@@ -18,20 +18,18 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-
 #include "cmsis_os.h"
 #include "i2c.h"
 #include "spi.h"
 #include "usart.h"
 #include "gpio.h"
-#include "bme280.h"
-#include "oled.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
+#include <stdlib.h>
+#include "bme280.h"
+#include "oled.h"
 
 /* USER CODE END Includes */
 
@@ -68,6 +66,7 @@ void MX_FREERTOS_Init(void);
 void I2C_Scan(void);
 
 static BME280_Data_t sensor;
+
 
 static void BME280_ShowData(void)
 {
@@ -134,8 +133,6 @@ int main(void)
   MX_SPI1_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
-
   OLED_Clear();
   /* USER CODE END 2 */
 
