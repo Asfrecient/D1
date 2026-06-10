@@ -31,8 +31,7 @@
 #include "bme280.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-void I2C_Scan(void);
-static BME280_Data_t sensor;
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -58,6 +57,17 @@ static BME280_Data_t sensor;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+
+/* USER CODE BEGIN PFP */
+
+/* USER CODE END PFP */
+
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
+void I2C_Scan(void);
+
+static BME280_Data_t sensor;
+
 static void BME280_ShowData(void)
 {
   char str[40];
@@ -78,8 +88,7 @@ static void BME280_ShowData(void)
 
   OLED_ShowString(0,2,str);
 
-  // sprintf(str,
-  //   "Press=%ld Pa", sensor.pressure / 256);
+
   sprintf(str,
         "P:%ld.%02ldhPa",
         sensor.pressure / 256 / 100,
@@ -89,13 +98,6 @@ static void BME280_ShowData(void)
   OLED_ShowString(0,4,str);
 
 }
-/* USER CODE BEGIN PFP */
-
-/* USER CODE END PFP */
-
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
-
 /* USER CODE END 0 */
 
 /**
