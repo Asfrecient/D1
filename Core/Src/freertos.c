@@ -63,30 +63,25 @@ static uint8_t SensorQueueStorage[sizeof(BME280_Data_t)];
 osThreadId_t SensorTaskHandle;
 const osThreadAttr_t SensorTask_attributes = {
   .name = "SensorTask",
-  .cb_mem = &SensorTaskControlBlock,
-  .cb_size = sizeof(SensorTaskControlBlock),
-  .stack_mem = SensorTaskStack,
-  .stack_size = sizeof(SensorTaskStack),
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for DisplayTask */
 osThreadId_t DisplayTaskHandle;
 const osThreadAttr_t DisplayTask_attributes = {
   .name = "DisplayTask",
-  .cb_mem = &DisplayTaskControlBlock,
-  .cb_size = sizeof(DisplayTaskControlBlock),
-  .stack_mem = DisplayTaskStack,
-  .stack_size = sizeof(DisplayTaskStack),
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
 };
 /* Definitions for sensorQueue */
 osMessageQueueId_t sensorQueueHandle;
 const osMessageQueueAttr_t sensorQueue_attributes = {
-  .name = "sensorQueue",
-  .cb_mem = &SensorQueueControlBlock,
-  .cb_size = sizeof(SensorQueueControlBlock),
-  .mq_mem = SensorQueueStorage,
-  .mq_size = sizeof(SensorQueueStorage),
+  .name = "sensorQueue"
+};
+/* Definitions for SensorTimer */
+osTimerId_t SensorTimerHandle;
+const osTimerAttr_t SensorTimer_attributes = {
+  .name = "SensorTimer"
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -97,6 +92,7 @@ static void CheckThreadCreated(osThreadId_t thread, const char *name);
 
 void StartSensorTask(void *argument);
 void StartDisplayTask(void *argument);
+void SensorTimerCallback(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -126,6 +122,10 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
+
+  /* Create the timer(s) */
+  /* creation of SensorTimer */
+  SensorTimerHandle = osTimerNew(SensorTimerCallback, osTimerPeriodic, NULL, &SensorTimer_attributes);
 
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
@@ -229,6 +229,14 @@ void StartDisplayTask(void *argument)
 
   /* USER CODE END StartDisplayTask */
 
+
+/* SensorTimerCallback function */
+void SensorTimerCallback(void *argument)
+{
+  /* USER CODE BEGIN SensorTimerCallback */
+
+  /* USER CODE END SensorTimerCallback */
+}
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
