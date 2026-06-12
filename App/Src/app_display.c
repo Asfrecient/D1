@@ -8,36 +8,28 @@
 
 #include "app_shared.h"
 
-
-void APP_DisplayUpdate(void)
+void APP_DisplayUpdate(BME280_Data_t *data)
 {
-    char str[40];
+        char str[40];
 
+        sprintf(str,
+                "T:%ld.%02ldC",
+                data->temperature / 100,
+                labs(data->temperature % 100));
 
-        osMutexAcquire(I2CMutex, osWaitForever);
+        OLED_ShowString(0, 0, str);
 
+        sprintf(str,
+                "H:%2ld.%02ld%%",
+                data->humidity / 1024,
+                (data->humidity % 1024) * 100 / 1024);
 
-    sprintf(str,
-            "T:%ld.%02ldC",
-            sensor.temperature / 100,
-            labs(sensor.temperature % 100));
+        OLED_ShowString(0, 2, str);
 
-    OLED_ShowString(0,0,str);
+        sprintf(str,
+                "P:%ld.%02ldhPa",
+                data->pressure / 256 / 100,
+                (data->pressure / 256) % 100);
 
-    sprintf(str,
-            "H:%2ld.%02ld%%",
-            sensor.humidity / 1024,
-            (sensor.humidity % 1024) * 100 / 1024);
-
-    OLED_ShowString(0,2,str);
-
-    sprintf(str,
-            "P:%ld.%02ldhPa",
-            sensor.pressure / 256 / 100,
-            sensor.pressure / 256 % 100);
-
-    OLED_ShowString(0,4,str);
-
-
-        osMutexRelease(I2CMutex);
+        OLED_ShowString(0, 4, str);
 }

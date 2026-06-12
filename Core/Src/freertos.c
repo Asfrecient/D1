@@ -48,7 +48,6 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-BME280_Data_t sensor;
 
 osMutexId_t I2CMutex;
 
@@ -178,18 +177,19 @@ void MX_FREERTOS_Init(void) {
 void StartSensorTask(void *argument)
 {
   /* USER CODE BEGIN StartSensorTask */
+  BME280_Data_t txData;
   /* Infinite loop */
   for(;;)
   {
-    BME280_ReadData(&sensor);
+    BME280_ReadData(&txData);
 
     osMessageQueuePut(
       sensorQueueHandle,
-      &sensor,
+      &txData,
       0,
       0
       );
-    printf("Queue Put\r\n");
+
 
     osDelay(1000);
   }
@@ -206,7 +206,6 @@ void StartSensorTask(void *argument)
 void StartDisplayTask(void *argument)
 {
   /* USER CODE BEGIN StartDisplayTask */
-  printf("DisplayTask Start\r\n");
   BME280_Data_t rxData;
   /* Infinite loop */
   for (;;)
@@ -221,17 +220,14 @@ void StartDisplayTask(void *argument)
             osWaitForever
         ) == osOK
     )
-    {
-      printf(
-          "T=%ld H=%ld P=%ld\r\n",
-          rxData.temperature,
-          rxData.humidity,
-          rxData.pressure
-      );
+      {
+      APP_DisplayUpdate(&rxData);
+    }
     }
   }
+
   /* USER CODE END StartDisplayTask */
-}
+
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
