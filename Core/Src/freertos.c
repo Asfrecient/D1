@@ -61,9 +61,6 @@ static StackType_t DisplayTaskStack[512];
 osThreadId_t SensorTaskHandle;
 const osThreadAttr_t SensorTask_attributes = {
   .name = "SensorTask",
-  .cb_mem = &SensorTaskControlBlock,
-  .cb_size = sizeof(SensorTaskControlBlock),
-  .stack_mem = SensorTaskStack,
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
@@ -71,11 +68,13 @@ const osThreadAttr_t SensorTask_attributes = {
 osThreadId_t DisplayTaskHandle;
 const osThreadAttr_t DisplayTask_attributes = {
   .name = "DisplayTask",
-  .cb_mem = &DisplayTaskControlBlock,
-  .cb_size = sizeof(DisplayTaskControlBlock),
-  .stack_mem = DisplayTaskStack,
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
+};
+/* Definitions for sensorQueue */
+osMessageQueueId_t sensorQueueHandle;
+const osMessageQueueAttr_t sensorQueue_attributes = {
+  .name = "sensorQueue"
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -120,6 +119,10 @@ void MX_FREERTOS_Init(void) {
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
+  /* Create the queue(s) */
+  /* creation of sensorQueue */
+  sensorQueueHandle = osMessageQueueNew (1, 12, &sensorQueue_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
@@ -127,11 +130,9 @@ void MX_FREERTOS_Init(void) {
   /* Create the thread(s) */
   /* creation of SensorTask */
   SensorTaskHandle = osThreadNew(StartSensorTask, NULL, &SensorTask_attributes);
-  CheckThreadCreated(SensorTaskHandle, "SensorTask");
 
   /* creation of DisplayTask */
   DisplayTaskHandle = osThreadNew(StartDisplayTask, NULL, &DisplayTask_attributes);
-  CheckThreadCreated(DisplayTaskHandle, "DisplayTask");
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
