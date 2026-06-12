@@ -28,6 +28,7 @@
 #include <stdio.h>
 
 #include "app_display.h"
+#include "app_sensor.h"
 #include "bme280.h"
 /* USER CODE END Includes */
 
@@ -181,7 +182,7 @@ void StartSensorTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    BME280_ReadData(&txData);
+    APP_SensorRead(&txData);
 
     osMessageQueuePut(
       sensorQueueHandle,
