@@ -83,6 +83,11 @@ osTimerId_t SensorTimerHandle;
 const osTimerAttr_t SensorTimer_attributes = {
   .name = "SensorTimer"
 };
+/* Definitions for SensorSem */
+osSemaphoreId_t SensorSemHandle;
+const osSemaphoreAttr_t SensorSem_attributes = {
+  .name = "SensorSem"
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -103,6 +108,7 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
+
   /* USER CODE END Init */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -119,6 +125,10 @@ void MX_FREERTOS_Init(void) {
   }
   /* USER CODE END RTOS_MUTEX */
 
+  /* Create the semaphores(s) */
+  /* creation of SensorSem */
+  SensorSemHandle = osSemaphoreNew(1, 0, &SensorSem_attributes);
+
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
@@ -133,7 +143,7 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the queue(s) */
   /* creation of sensorQueue */
-  sensorQueueHandle = osMessageQueueNew (1, sizeof(BME280_Data_t), &sensorQueue_attributes);
+  sensorQueueHandle = osMessageQueueNew (1, 12, &sensorQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   if(sensorQueueHandle == NULL)
@@ -157,6 +167,9 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+  osTimerStart(
+    SensorTimerHandle,
+    1000);
 
   CheckThreadCreated(SensorTaskHandle, "SensorTask");
   CheckThreadCreated(DisplayTaskHandle, "DisplayTask");
@@ -182,6 +195,13 @@ void StartSensorTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
+
+    osSemaphoreAcquire(
+        SensorSemHandle,
+        osWaitForever);
+
+    printf("SensorTask\r\n");
+
     APP_SensorRead(&txData);
 
     osMessageQueuePut(
@@ -191,8 +211,6 @@ void StartSensorTask(void *argument)
       0
       );
 
-
-    osDelay(1000);
   }
   /* USER CODE END StartSensorTask */
 }
@@ -222,19 +240,22 @@ void StartDisplayTask(void *argument)
         ) == osOK
     )
       {
+      printf("DisplayTask\r\n");
+
       APP_DisplayUpdate(&rxData);
-    }
+      }
     }
   }
 
   /* USER CODE END StartDisplayTask */
 
-
 /* SensorTimerCallback function */
 void SensorTimerCallback(void *argument)
 {
   /* USER CODE BEGIN SensorTimerCallback */
+  printf("Timer\r\n");
 
+  osSemaphoreRelease(SensorSemHandle);
   /* USER CODE END SensorTimerCallback */
 }
 
