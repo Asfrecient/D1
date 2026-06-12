@@ -8,7 +8,6 @@
 
 #include "app_shared.h"
 
-extern BME280_Data_t sensor;
 
 void APP_DisplayUpdate(void)
 {
