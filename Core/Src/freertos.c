@@ -56,25 +56,37 @@ static StaticTask_t SensorTaskControlBlock;
 static StackType_t SensorTaskStack[512];
 static StaticTask_t DisplayTaskControlBlock;
 static StackType_t DisplayTaskStack[512];
+static StaticQueue_t SensorQueueControlBlock;
+static uint8_t SensorQueueStorage[sizeof(BME280_Data_t)];
 /* USER CODE END Variables */
 /* Definitions for SensorTask */
 osThreadId_t SensorTaskHandle;
 const osThreadAttr_t SensorTask_attributes = {
   .name = "SensorTask",
-  .stack_size = 512 * 4,
+  .cb_mem = &SensorTaskControlBlock,
+  .cb_size = sizeof(SensorTaskControlBlock),
+  .stack_mem = SensorTaskStack,
+  .stack_size = sizeof(SensorTaskStack),
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for DisplayTask */
 osThreadId_t DisplayTaskHandle;
 const osThreadAttr_t DisplayTask_attributes = {
   .name = "DisplayTask",
-  .stack_size = 512 * 4,
+  .cb_mem = &DisplayTaskControlBlock,
+  .cb_size = sizeof(DisplayTaskControlBlock),
+  .stack_mem = DisplayTaskStack,
+  .stack_size = sizeof(DisplayTaskStack),
   .priority = (osPriority_t) osPriorityBelowNormal,
 };
 /* Definitions for sensorQueue */
 osMessageQueueId_t sensorQueueHandle;
 const osMessageQueueAttr_t sensorQueue_attributes = {
-  .name = "sensorQueue"
+  .name = "sensorQueue",
+  .cb_mem = &SensorQueueControlBlock,
+  .cb_size = sizeof(SensorQueueControlBlock),
+  .mq_mem = SensorQueueStorage,
+  .mq_size = sizeof(SensorQueueStorage),
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -121,9 +133,18 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the queue(s) */
   /* creation of sensorQueue */
-  sensorQueueHandle = osMessageQueueNew (1, 12, &sensorQueue_attributes);
+  sensorQueueHandle = osMessageQueueNew (1, sizeof(BME280_Data_t), &sensorQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
+  if(sensorQueueHandle == NULL)
+  {
+    printf("Queue Create Failed\r\n");
+    Error_Handler();
+  }
+  else
+  {
+    printf("Queue Create OK\r\n");
+  }
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
@@ -136,6 +157,9 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+
+  CheckThreadCreated(SensorTaskHandle, "SensorTask");
+  CheckThreadCreated(DisplayTaskHandle, "DisplayTask");
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
@@ -159,6 +183,14 @@ void StartSensorTask(void *argument)
   {
     BME280_ReadData(&sensor);
 
+    osMessageQueuePut(
+      sensorQueueHandle,
+      &sensor,
+      0,
+      0
+      );
+    printf("Queue Put\r\n");
+
     osDelay(1000);
   }
   /* USER CODE END StartSensorTask */
@@ -174,11 +206,29 @@ void StartSensorTask(void *argument)
 void StartDisplayTask(void *argument)
 {
   /* USER CODE BEGIN StartDisplayTask */
+  printf("DisplayTask Start\r\n");
+  BME280_Data_t rxData;
   /* Infinite loop */
-  for(;;)
+  for (;;)
   {
-    APP_DisplayUpdate();
-    osDelay(1000);
+
+    if (
+
+        osMessageQueueGet(
+            sensorQueueHandle,
+            &rxData,
+            NULL,
+            osWaitForever
+        ) == osOK
+    )
+    {
+      printf(
+          "T=%ld H=%ld P=%ld\r\n",
+          rxData.temperature,
+          rxData.humidity,
+          rxData.pressure
+      );
+    }
   }
   /* USER CODE END StartDisplayTask */
 }
