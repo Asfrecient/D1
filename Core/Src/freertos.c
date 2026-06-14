@@ -256,10 +256,10 @@ void StartDisplayTask(void *argument)
       APP_DisplayUpdate(&rxData);
       }
     }
-  }
+
 
   /* USER CODE END StartDisplayTask */
-
+}
 
 /* USER CODE BEGIN Header_StartMonitorTask */
 /**
