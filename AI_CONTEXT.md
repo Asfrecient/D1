@@ -177,93 +177,57 @@ APP_DisplayUpdate(...)
 
 # FreeRTOS状态
 
-当前已经使用：
+## 当前RTOS对象
 
-## Task
+Task：
 
 ```text
 SensorTask
 DisplayTask
+MonitorTask
 ```
 
----
-
-## Queue
+Queue：
 
 ```text
 sensorQueueHandle
 ```
 
-作用：
-
-SensorTask：
-
-```text
-读取BME280
-↓
-发送Queue
-```
-
-DisplayTask：
-
-```text
-接收Queue
-↓
-刷新OLED
-```
-
----
-
-## Mutex
+Mutex：
 
 ```text
 I2CMutexHandle
 ```
 
-原因：
-
-OLED和BME280共用I2C总线。
-
-曾出现：
-
-* OLED显示乱跳
-* 传感器数据异常
-
-最终使用Mutex解决。
-
-规则：
-
-所有I2C访问必须先获取Mutex。
-
----
-
-## Software Timer
-
-```text
-SensorTimerHandle
-```
-
-周期：
-
-```text
-1000ms
-```
-
-作用：
-
-定时触发传感器采样。
-
----
-
-## Semaphore
+Semaphore：
 
 ```text
 SensorSemHandle
 ```
 
-作用：
+Software Timer：
 
-Timer通知SensorTask开始采样。
+```text
+SensorTimerHandle
+```
+
+当前工程已经使用：
+
+```text
+Task
+Queue
+Mutex
+Semaphore
+Software Timer
+```
+
+尚未使用：
+
+```text
+Event Flags
+Message Buffer
+Stream Buffer
+```
 
 ---
 
@@ -286,7 +250,38 @@ DisplayTask
       │
       ▼
 OLED
+
+MonitorTask
+      │
+      ▼
+每5秒打印任务剩余栈空间
 ```
+
+## 当前任务优先级
+
+```text
+SensorTask   Normal
+
+DisplayTask  BelowNormal
+
+MonitorTask  Low
+```
+
+设计原则：
+
+```text
+采样优先于显示
+
+显示优先于调试输出
+```
+
+MonitorTask属于后台诊断任务。
+
+即使MonitorTask出现异常，也不应影响：
+
+* 传感器采样
+* OLED显示
+
 
 ---
 
@@ -406,6 +401,31 @@ configTOTAL_HEAP_SIZE = 8192
 
 ---
 
+## 问题4
+
+Task Stack不足时，任务可能不是明显报错，而是表现为只执行一次或后续不再运行。
+
+当前增加：
+
+```text
+MonitorTask
+```
+
+用于周期打印：
+
+```text
+SensorTask剩余栈空间
+DisplayTask剩余栈空间
+```
+
+经验：
+
+* 调试RTOS异常时优先观察Stack和Heap
+* 不要随意降低Task Stack
+* 不要降低 `configTOTAL_HEAP_SIZE = 8192`
+
+---
+
 # FreeRTOS配置
 
 当前：
@@ -425,6 +445,61 @@ configTOTAL_HEAP_SIZE = 8192
 * Semaphore
 * Timer
 * 多任务
+* MonitorTask栈监控
+
+当前任务栈配置：
+
+SensorTask：
+
+```c
+.stack_size = 512 * 4
+```
+
+即：
+
+```text
+2048 Bytes
+```
+
+DisplayTask：
+
+```c
+.stack_size = 512 * 4
+```
+
+即：
+
+```text
+2048 Bytes
+```
+
+MonitorTask：
+
+```c
+.stack_size = 256 * 4
+```
+
+即：
+
+```text
+1024 Bytes
+```
+
+MonitorTask实测输出：
+
+```text
+SensorTask  Stack : 1464
+DisplayTask Stack : 1536
+```
+
+估算：
+
+```text
+SensorTask  已使用约584 Bytes
+
+DisplayTask 已使用约512 Bytes
+```
+
 
 ---
 
@@ -522,30 +597,91 @@ Driver
 
 ## v1.3
 
-* Software Timer
-* Binary Semaphore
-* 事件驱动采样
+* Software Timer + Semaphore事件驱动采样
 
-当前稳定版本：
+---
+
+## v1.4
+
+* MonitorTask任务栈监控
+
+---
+
+# 当前稳定版本
 
 ```text
-v1.3
+v1.4
 ```
 
 ---
 
-# 后续规划
+# 当前技术债
 
-## v1.4
+# 当前技术债
 
-MonitorTask
+目标架构：
 
-学习：
+```text
+Task
+ ↓
+App
+ ↓
+Driver
+```
 
-* 任务监控
-* 栈监控
+原则上：
+
+```text
+Driver层不依赖FreeRTOS
+```
+
+当前实际情况：
+
+OLED与BME280共用I2C1。
+
+为了避免总线竞争，
+
+```c
+BME280_ReadData(...)
+```
+
+内部直接使用：
+
+```c
+osMutexAcquire(...)
+osMutexRelease(...)
+```
+
+因此：
+
+```text
+当前BME280驱动已经依赖FreeRTOS Mutex
+```
+
+这是学习阶段的简化实现。
+
+后续可以考虑：
+
+```text
+App层统一加锁
+
+或
+
+封装I2C访问层
+```
+
+从而恢复：
+
+```text
+Driver层不依赖RTOS
+```
+
+的目标架构。
+
 
 ---
+
+# 后续规划
 
 ## v1.5
 
@@ -631,3 +767,49 @@ MQTT
 8. MCU为STM32F103C8T6。
 9. 所有BME280数据均采用定点数表示。
 10. 所有新增功能优先放入App层实现。
+11. SensorTask必须保持事件驱动模式。
+
+当前正确架构：
+
+```text
+Software Timer
+      ↓
+Semaphore
+      ↓
+SensorTask
+```
+
+不要改回：
+
+```c
+for (;;)
+{
+    BME280_ReadData();
+    osDelay(...);
+}
+```
+
+除非明确进行架构调整。
+
+12. MonitorTask属于调试工具。
+
+允许增加：
+
+* Heap监控
+* Queue监控
+* Runtime统计
+
+不要让MonitorTask参与业务逻辑。
+
+13. 当前任务优先级设计：
+
+```text
+SensorTask   Normal
+
+DisplayTask  BelowNormal
+
+MonitorTask  Low
+```
+
+新增任务时应明确说明优先级设计原因。
+

@@ -632,133 +632,341 @@ RTOS核心思想：
 
 ---
 
-# 当前形成的开发原则
+# 阶段九：MonitorTask 与任务栈监控
 
 ---
 
-## 原则1
+## 问题15：任务栈大小到底应该设置多少？
 
-```text
-Task不要直接操作硬件。
+之前配置任务时：
+
+```c
+.stack_size = 512 * 4
 ```
 
-推荐：
+能够运行，但并不知道：
 
 ```text
-Task
-↓
-App
-↓
-Driver
+实际用了多少？
+是否浪费？
+是否存在栈溢出风险？
+```
+
+属于经验配置。
+
+---
+
+## 尝试方案
+
+新增：
+
+```text
+MonitorTask
+```
+
+作用：
+
+```text
+周期监控任务运行状态
+```
+
+MonitorTask优先级：
+
+```text
+Low
+```
+
+避免影响正常业务任务。
+
+---
+
+## 学习的新API
+
+CMSIS-RTOS2提供：
+
+```c
+osThreadGetStackSpace()
+```
+
+作用：
+
+```text
+获取任务剩余栈空间
+```
+
+使用示例：
+
+```c
+osThreadGetStackSpace(
+    SensorTaskHandle);
+
+osThreadGetStackSpace(
+    DisplayTaskHandle);
 ```
 
 ---
 
-## 原则2
+## 实际测试结果
 
-```text
-共享资源必须加Mutex。
+当前配置：
+
+```c
+.stack_size = 512 * 4
 ```
 
-例如：
+即：
 
 ```text
-I2C
-SPI
-UART
+2048 Bytes
 ```
 
----
-
-## 原则3
+MonitorTask输出：
 
 ```text
-任务之间优先Queue通信。
-```
+===== Task Monitor =====
 
-避免：
+SensorTask  Stack : 1464
 
-```text
-全局变量共享
-```
+DisplayTask Stack : 1536
 
----
-
-## 原则4
-
-```text
-CubeMX管理文件尽量少改。
-```
-
-业务代码放：
-
-```text
-App层
+========================
 ```
 
 ---
 
-## 原则5
+## 数据分析
+
+SensorTask：
 
 ```text
-出现异常先查：
+总栈：
+2048 Bytes
 
+剩余：
+1464 Bytes
+
+已使用：
+约584 Bytes
+```
+
+---
+
+DisplayTask：
+
+```text
+总栈：
+2048 Bytes
+
+剩余：
+1536 Bytes
+
+已使用：
+约512 Bytes
+```
+
+---
+
+## 重要发现
+
+DisplayTask实际栈消耗比预期更高。
+
+原因可能包括：
+
+```c
+char str[40];
+
+sprintf(...);
+sprintf(...);
+sprintf(...);
+```
+
+其中：
+
+```c
+sprintf()
+```
+
+属于栈消耗较大的函数。
+
+---
+
+## 与历史问题关联
+
+此前曾出现：
+
+```text
+DisplayTask只执行一次
+```
+
+当时通过增大Stack后恢复正常。
+
+v1.4阶段通过运行时监控验证：
+
+```text
+DisplayTask确实存在较高栈消耗
+```
+
+说明之前的问题极有可能与栈不足有关。
+
+---
+
+## MonitorTask的价值
+
+以前排查问题时：
+
+```text
+怀疑Queue
+怀疑驱动
+怀疑逻辑
+```
+
+缺乏客观依据。
+
+现在：
+
+```text
+可以直接观察Stack剩余量
+```
+
+判断：
+
+```text
+是否接近栈溢出
+是否需要调整配置
+```
+
+---
+
+## 学到的新概念
+
+### Runtime Diagnostics（运行时诊断）
+
+不是只看代码。
+
+而是在程序运行过程中实时观察：
+
+```text
 Stack
 Heap
-Mutex
-Queue
+Task状态
+Queue状态
 ```
 
-不要第一时间怀疑驱动。
+定位问题。
+
+MonitorTask属于：
+
+```text
+运行时诊断工具
+```
 
 ---
 
-# 当前项目状态
+## 经验总结
 
-已完成：
+经验1：
 
 ```text
-v1.0 BME280 + OLED
+Task Stack不要靠猜。
+```
 
-v1.1 Queue
+应通过实际运行数据评估。
 
-v1.2 App层重构
+---
 
-v1.3 Timer + Semaphore
+经验2：
+
+```text
+出现RTOS异常时先查资源。
+```
+
+排查顺序：
+
+```text
+1. Stack
+2. Heap
+3. Queue
+4. Mutex
+5. Semaphore
+6. 业务逻辑
+```
+
+---
+
+经验3：
+
+```text
+sprintf()
+是典型的大栈消耗函数。
+```
+
+在资源受限系统中需要特别注意。
+
+---
+
+经验4：
+
+```text
+MonitorTask应长期保留。
+```
+
+后续开发：
+
+```text
+UART Shell
+W25Q64
+ESP8266
+MQTT
+```
+
+时仍然可以用于定位问题。
+
+---
+
+## 本阶段收获
+
+从：
+
+```text
+给任务随便分配栈大小
+```
+
+转变为：
+
+```text
+通过运行时数据评估任务资源占用
+```
+
+开始具备：
+
+```text
+RTOS资源分析能力
+```
+
+这是从“会用FreeRTOS”到“会调试FreeRTOS”的重要一步。
+
+---
+
+## 当前版本
+
+完成：
+
+```text
+v1.4 MonitorTask
+```
+
+掌握：
+
+```text
+osThreadGetStackSpace()
+
+任务栈监控
+
+运行时诊断
 ```
 
 下一阶段：
 
 ```text
-v1.4 MonitorTask
-
-v1.5 Event Flags
-
-v1.6 Buzzer
-
-v2.0 UART Shell
+v1.5 Event Flags + 按键输入
 ```
-
----
-
-# 最重要的收获
-
-从：
-
-```text
-单片机裸机思维
-```
-
-逐步转变为：
-
-```text
-RTOS思维
-
-任务
-同步
-通信
-分层
-事件驱动
-```
-
-这是本项目目前最大的学习成果。
