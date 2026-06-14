@@ -30,6 +30,7 @@
 #include "app_display.h"
 #include "app_sensor.h"
 #include "bme280.h"
+#include "task.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -73,6 +74,13 @@ const osThreadAttr_t DisplayTask_attributes = {
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
 };
+/* Definitions for MonitorTask */
+osThreadId_t MonitorTaskHandle;
+const osThreadAttr_t MonitorTask_attributes = {
+  .name = "MonitorTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
 /* Definitions for sensorQueue */
 osMessageQueueId_t sensorQueueHandle;
 const osMessageQueueAttr_t sensorQueue_attributes = {
@@ -97,6 +105,7 @@ static void CheckThreadCreated(osThreadId_t thread, const char *name);
 
 void StartSensorTask(void *argument);
 void StartDisplayTask(void *argument);
+void StartMonitorTask(void *argument);
 void SensorTimerCallback(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -165,6 +174,9 @@ void MX_FREERTOS_Init(void) {
   /* creation of DisplayTask */
   DisplayTaskHandle = osThreadNew(StartDisplayTask, NULL, &DisplayTask_attributes);
 
+  /* creation of MonitorTask */
+  MonitorTaskHandle = osThreadNew(StartMonitorTask, NULL, &MonitorTask_attributes);
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   osTimerStart(
@@ -200,7 +212,6 @@ void StartSensorTask(void *argument)
         SensorSemHandle,
         osWaitForever);
 
-    printf("SensorTask\r\n");
 
     APP_SensorRead(&txData);
 
@@ -240,7 +251,7 @@ void StartDisplayTask(void *argument)
         ) == osOK
     )
       {
-      printf("DisplayTask\r\n");
+
 
       APP_DisplayUpdate(&rxData);
       }
@@ -249,11 +260,45 @@ void StartDisplayTask(void *argument)
 
   /* USER CODE END StartDisplayTask */
 
+
+/* USER CODE BEGIN Header_StartMonitorTask */
+/**
+* @brief Function implementing the MonitorTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartMonitorTask */
+void StartMonitorTask(void *argument)
+{
+  /* USER CODE BEGIN StartMonitorTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    printf("\r\n");
+    printf("===== Task Monitor =====\r\n");
+
+    printf(
+        "SensorTask  Stack : %lu\r\n",
+        osThreadGetStackSpace(
+            SensorTaskHandle));
+
+    printf(
+        "DisplayTask Stack : %lu\r\n",
+        osThreadGetStackSpace(
+            DisplayTaskHandle));
+
+    printf("========================\r\n");
+
+    osDelay(5000);
+  }
+  /* USER CODE END StartMonitorTask */
+}
+
 /* SensorTimerCallback function */
 void SensorTimerCallback(void *argument)
 {
   /* USER CODE BEGIN SensorTimerCallback */
-  printf("Timer\r\n");
+
 
   osSemaphoreRelease(SensorSemHandle);
   /* USER CODE END SensorTimerCallback */
