@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include "bme280.h"
 #include "oled.h"
+#include "app_shared.h"
 
 /* USER CODE END Includes */
 
@@ -51,7 +52,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+uint32_t g_lastKeyTick = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -184,9 +185,22 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   if(GPIO_Pin == GPIO_PIN_0)
   {
-    printf("KEY\r\n");
+    uint32_t now = HAL_GetTick();
+
+    if(now - g_lastKeyTick < 50)
+    {
+      return;
+    }
+
+    g_lastKeyTick = now;
+
+    osEventFlagsSet(
+        DisplayEventHandle,
+        DISPLAY_EVENT_KEY);
   }
 }
+
+
 /* USER CODE END 4 */
 
 /**

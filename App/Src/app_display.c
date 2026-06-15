@@ -8,6 +8,11 @@
 
 #include "app_shared.h"
 
+#include "FreeRTOSConfig.h"
+
+#include "FreeRTOS.h"
+
+
 void APP_DisplayUpdate(BME280_Data_t *data)
 {
         char str[40];
@@ -32,4 +37,22 @@ void APP_DisplayUpdate(BME280_Data_t *data)
                 (data->pressure / 256) % 100);
 
         OLED_ShowString(0, 4, str);
+}
+
+void APP_DisplayShowStack(
+    uint32_t sensorStack,
+    uint32_t displayStack)
+{
+        char str[32];
+
+        OLED_ShowString(0, 0, "Stack Monitor");
+
+        sprintf(str, "S:%lu", sensorStack);
+        OLED_ShowString(0, 2, str);
+
+        sprintf(str, "D:%lu", displayStack);
+        OLED_ShowString(0, 4, str);
+
+        sprintf(str,"Free:%u",xPortGetFreeHeapSize());
+        OLED_ShowString(0, 6, str);
 }

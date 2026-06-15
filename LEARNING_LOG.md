@@ -520,6 +520,362 @@ RTOS问题先怀疑：
 configTOTAL_HEAP_SIZE
 ```
 
+过小。
+
+解决：
+
+```text
+增大FreeRTOS Heap
+```
+
+经验：
+
+```text
+对象创建失败或行为异常时，要检查Heap是否足够。
+```
+
+---
+
+# 阶段八：v1.5 按键与页面切换
+
+---
+
+## 问题13：EXTI中断完整链路不清楚
+
+完整链路：
+
+```text
+按键
+↓
+EXTI
+↓
+NVIC
+↓
+IRQHandler
+↓
+HAL_GPIO_EXTI_IRQHandler
+↓
+HAL_GPIO_EXTI_Callback
+↓
+用户代码
+```
+
+理解：
+
+```text
+HAL_GPIO_EXTI_Callback()
+本质是HAL库提供的中断回调函数
+```
+
+经验：
+
+```text
+先搞清中断完整调用链，再写用户逻辑。
+```
+
+---
+
+## 问题14：Event Flags本质不理解
+
+理解后：
+
+```text
+Event Flags本质上是一个32位状态寄存器
+```
+
+例如：
+
+```c
+#define DISPLAY_EVENT_KEY 0x01
+```
+
+对应：
+
+```text
+bit0
+```
+
+以后可以扩展：
+
+```text
+0x01
+0x02
+0x04
+0x08
+...
+```
+
+分别对应不同事件。
+
+经验：
+
+```text
+Event Flags适合表达“多个离散事件”的通知状态。
+```
+
+---
+
+## 问题15：位运算检查事件
+
+代码：
+
+```c
+if(flags & DISPLAY_EVENT_KEY)
+```
+
+本质：
+
+```text
+检查bit0是否为1
+```
+
+与BME280中的：
+
+```c
+if(value & 0x0800)
+```
+
+属于同一种位操作思想。
+
+经验：
+
+```text
+位掩码判断是嵌入式开发中的通用模式。
+```
+
+---
+
+## 问题16：osEventFlagsClear理解
+
+代码：
+
+```c
+osEventFlagsClear(
+    DisplayEventHandle,
+    DISPLAY_EVENT_KEY);
+```
+
+含义：
+
+```text
+在DisplayEventHandle中
+清除DISPLAY_EVENT_KEY对应的bit
+```
+
+本质类似：
+
+```c
+flags &= ~mask;
+```
+
+经验：
+
+```text
+Set / Check / Clear 要作为一套事件状态管理来理解。
+```
+
+---
+
+## 问题17：^= 运算符用于页面切换
+
+代码：
+
+```c
+g_displayPage ^= 1;
+```
+
+效果：
+
+```text
+0 → 1
+1 → 0
+```
+
+用于页面切换。
+
+经验：
+
+```text
+异或翻转非常适合双状态切换。
+```
+
+---
+
+## 问题18：机械按键抖动导致重复触发
+
+实际波形：
+
+```text
+按下
+↓
+多次抖动
+↓
+稳定
+```
+
+导致：
+
+```text
+一次按压
+触发多次中断
+```
+
+解决：
+
+```c
+HAL_GetTick()
+
+if(now - g_lastKeyTick < 50)
+{
+    return;
+}
+```
+
+实现：
+
+```text
+50ms软件消抖
+```
+
+经验：
+
+```text
+机械按键默认要考虑消抖，软件消抖是最直接方案。
+```
+
+---
+
+## 问题19：return的作用需要重新理解
+
+代码：
+
+```c
+if(now - g_lastKeyTick < 50)
+{
+    return;
+}
+```
+
+含义：
+
+```text
+立即退出当前函数
+```
+
+属于：
+
+```text
+Early Return
+（提前返回）
+```
+
+常用于：
+
+```text
+参数检查
+错误处理
+消抖
+状态过滤
+```
+
+经验：
+
+```text
+Early Return能让中断回调和状态过滤逻辑更清晰。
+```
+
+---
+
+## 问题20：RTOS任务响应速度为什么慢
+
+问题：
+
+```text
+KEY立即打印
+Page切换延迟
+```
+
+原因：
+
+```c
+osMessageQueueGet(
+    ...,
+    osWaitForever);
+```
+
+导致：
+
+```text
+DisplayTask一直阻塞
+```
+
+结论：
+
+```text
+任务响应速度
+不取决于CPU速度
+
+而取决于任务什么时候被唤醒
+```
+
+经验：
+
+```text
+RTOS性能分析要先看阻塞点和唤醒条件。
+```
+
+---
+
+## 问题21：OLED刷新闪屏
+
+问题：
+
+```text
+每次刷新都OLED_Clear()
+```
+
+现象：
+
+```text
+闪屏
+```
+
+解决：
+
+```text
+页面切换时清屏
+数据刷新时不清屏
+```
+
+经验：
+
+```text
+页面切换 → Clear
+
+页面刷新 → 局部更新
+```
+
+这是嵌入式UI开发常见优化思路。
+
+---
+
+# 阶段总结
+
+v1.5重点掌握：
+
+```text
+EXTI
+NVIC
+IRQHandler
+HAL_GPIO_EXTI_Callback
+Event Flags
+位运算
+软件消抖
+UI页面切换
+RTOS响应分析
+OLED刷新优化
+```
+
 默认：
 
 ```text

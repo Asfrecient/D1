@@ -30,7 +30,9 @@
 #include "app_display.h"
 #include "app_sensor.h"
 #include "bme280.h"
-#include "task.h"
+#include "app_shared.h"
+#include "oled.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,6 +54,8 @@
 /* USER CODE BEGIN Variables */
 
 osMutexId_t I2CMutex;
+
+volatile uint8_t g_displayPage = 0;
 
 static StaticTask_t SensorTaskControlBlock;
 static StackType_t SensorTaskStack[512];
@@ -95,6 +99,11 @@ const osTimerAttr_t SensorTimer_attributes = {
 osSemaphoreId_t SensorSemHandle;
 const osSemaphoreAttr_t SensorSem_attributes = {
   .name = "SensorSem"
+};
+/* Definitions for DisplayEvent */
+osEventFlagsId_t DisplayEventHandle;
+const osEventFlagsAttr_t DisplayEvent_attributes = {
+  .name = "DisplayEvent"
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -187,6 +196,10 @@ void MX_FREERTOS_Init(void) {
   CheckThreadCreated(DisplayTaskHandle, "DisplayTask");
   /* USER CODE END RTOS_THREADS */
 
+  /* Create the event(s) */
+  /* creation of DisplayEvent */
+  DisplayEventHandle = osEventFlagsNew(&DisplayEvent_attributes);
+
   /* USER CODE BEGIN RTOS_EVENTS */
   /* add events, ... */
   /* USER CODE END RTOS_EVENTS */
@@ -237,23 +250,56 @@ void StartDisplayTask(void *argument)
 {
   /* USER CODE BEGIN StartDisplayTask */
   BME280_Data_t rxData;
+  uint32_t flags;
+  static uint8_t lastPage = 255;
   /* Infinite loop */
   for (;;)
   {
+    flags = osEventFlagsGet(DisplayEventHandle);
+
+
+    if(flags & DISPLAY_EVENT_KEY)
+    {
+      osEventFlagsClear(
+          DisplayEventHandle,
+          DISPLAY_EVENT_KEY);
+
+      g_displayPage ^= 1;
+
+      printf(
+          "Page=%d\r\n",
+          g_displayPage);
+    }
 
     if (
-
         osMessageQueueGet(
             sensorQueueHandle,
             &rxData,
             NULL,
-            osWaitForever
+            100
         ) == osOK
     )
       {
+      if(lastPage != g_displayPage)
+      {
+        OLED_Clear();
 
+        lastPage = g_displayPage;
+      }
 
-      APP_DisplayUpdate(&rxData);
+      if(g_displayPage == 0)
+      {
+        APP_DisplayUpdate(&rxData);
+      }
+      else
+      {
+        APP_DisplayShowStack(
+            osThreadGetStackSpace(
+                SensorTaskHandle),
+
+            osThreadGetStackSpace(
+                DisplayTaskHandle));
+      }
       }
     }
 
