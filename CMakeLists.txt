@@ -42,6 +42,8 @@ add_executable(${CMAKE_PROJECT_NAME}
         App/Inc/app_shared.h
         App/Inc/app_sensor.h
         App/Src/app_sensor.c
+        App/Src/app_shell.c
+        App/Inc/app_shell.h
 )
 
 # Add STM32CubeMX generated sources

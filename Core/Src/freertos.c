@@ -31,6 +31,7 @@
 #include "app_sensor.h"
 #include "bme280.h"
 #include "app_shared.h"
+#include "app_shell.h"
 #include "oled.h"
 
 /* USER CODE END Includes */
@@ -85,10 +86,22 @@ const osThreadAttr_t MonitorTask_attributes = {
   .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
+/* Definitions for ShellTask */
+osThreadId_t ShellTaskHandle;
+const osThreadAttr_t ShellTask_attributes = {
+  .name = "ShellTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
 /* Definitions for sensorQueue */
 osMessageQueueId_t sensorQueueHandle;
 const osMessageQueueAttr_t sensorQueue_attributes = {
   .name = "sensorQueue"
+};
+/* Definitions for shellQueue */
+osMessageQueueId_t shellQueueHandle;
+const osMessageQueueAttr_t shellQueue_attributes = {
+  .name = "shellQueue"
 };
 /* Definitions for SensorTimer */
 osTimerId_t SensorTimerHandle;
@@ -115,6 +128,7 @@ static void CheckThreadCreated(osThreadId_t thread, const char *name);
 void StartSensorTask(void *argument);
 void StartDisplayTask(void *argument);
 void StartMonitorTask(void *argument);
+void StartShellTask(void *argument);
 void SensorTimerCallback(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -163,6 +177,9 @@ void MX_FREERTOS_Init(void) {
   /* creation of sensorQueue */
   sensorQueueHandle = osMessageQueueNew (1, 12, &sensorQueue_attributes);
 
+  /* creation of shellQueue */
+  shellQueueHandle = osMessageQueueNew (4, 32, &shellQueue_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   if(sensorQueueHandle == NULL)
   {
@@ -184,7 +201,10 @@ void MX_FREERTOS_Init(void) {
   DisplayTaskHandle = osThreadNew(StartDisplayTask, NULL, &DisplayTask_attributes);
 
   /* creation of MonitorTask */
-  MonitorTaskHandle = osThreadNew(StartMonitorTask, NULL, &MonitorTask_attributes);
+  //MonitorTaskHandle = osThreadNew(StartMonitorTask, NULL, &MonitorTask_attributes);
+
+  /* creation of ShellTask */
+  ShellTaskHandle = osThreadNew(StartShellTask, NULL, &ShellTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -228,6 +248,8 @@ void StartSensorTask(void *argument)
 
     APP_SensorRead(&txData);
 
+    g_latestData = txData;
+    
     osMessageQueuePut(
       sensorQueueHandle,
       &txData,
@@ -338,6 +360,32 @@ void StartMonitorTask(void *argument)
     osDelay(5000);
   }
   /* USER CODE END StartMonitorTask */
+}
+
+/* USER CODE BEGIN Header_StartShellTask */
+/**
+* @brief Function implementing the ShellTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartShellTask */
+void StartShellTask(void *argument)
+{
+  /* USER CODE BEGIN StartShellTask */
+  char cmd[32];
+  /* Infinite loop */
+  for(;;)
+  {
+    if(osMessageQueueGet(
+                shellQueueHandle,
+                cmd,
+                NULL,
+                osWaitForever) == osOK)
+    {
+      APP_ShellProcess(cmd);
+    }
+  }
+  /* USER CODE END StartShellTask */
 }
 
 /* SensorTimerCallback function */

@@ -7,7 +7,7 @@
 当前版本：
 
 ```text
-v1.5
+v2.0
 ```
 
 当前已完成：
@@ -24,6 +24,11 @@ v1.5
 * 按键软件消抖
 * DisplayTask 响应优化
 * OLED 刷新优化
+* UART Shell
+* 命令解析
+* 系统状态查询
+* 传感器数据查询
+* 任务栈查询
 
 ---
 
@@ -41,6 +46,7 @@ STM32F103C8T6
 OLED SSD1306（I2C）
 BME280（I2C）
 按键（PA0 / GPIO_EXTI0，已接入）
+USART1（UART Shell）
 ESP8266 NodeMCU（未开发）
 W25Q64 Flash（未开发）
 蜂鸣器（未开发）
@@ -73,6 +79,8 @@ App/
   app_sensor.h
   app_display.c
   app_display.h
+  app_shell.c
+  app_shell.h
 
 Drivers/
   bme280.c
@@ -87,7 +95,7 @@ FreeRTOS/
 职责：
 
 * Driver：寄存器读写、I2C、OLED/BME280 驱动，不依赖 FreeRTOS
-* App：业务逻辑、数据处理、显示格式化
+* App：业务逻辑、数据处理、显示与命令处理
 * RTOS：任务、队列、同步对象创建与调度
 
 约束：
@@ -110,18 +118,37 @@ OLED：
 * Page1：Stack Monitor / Free Heap
 * 仅在页面切换时 `OLED_Clear()`，避免闪屏
 
-显示示例：
-
-```text
-T:25.34C
-H:48.21%
-P:1008.01hPa
-```
-
 按键：
 
 * PA0 外部中断切换页面
 * 50ms 软件消抖
+
+UART Shell：
+
+* USART1 RX Interrupt 接收命令
+* ShellTask 解析命令并调用 `APP_ShellProcess()`
+* 命令通过 Queue 从中断侧转给任务侧处理
+
+支持命令：
+
+```text
+help
+version
+all
+temp
+hum
+press
+stack
+```
+
+输出示例：
+
+```text
+EnvMonitor v2.0
+T:xx.xxC
+H:xx.xx%
+P:xxxx.xxhPa
+```
 
 ---
 
@@ -132,6 +159,7 @@ P:1008.01hPa
 ```text
 SensorTask   Normal
 DisplayTask  BelowNormal
+ShellTask    Low
 MonitorTask  Low
 ```
 
@@ -139,6 +167,7 @@ RTOS对象：
 
 ```text
 Queue:          sensorQueueHandle
+Queue:          shellQueueHandle
 Mutex:          I2CMutexHandle
 Semaphore:      SensorSemHandle
 SoftwareTimer:  SensorTimerHandle
@@ -156,17 +185,11 @@ Software Timer
 Event Flags
 ```
 
-未使用：
-
-```text
-Message Buffer
-Stream Buffer
-```
-
 设计原则：
 
 * 采样优先于显示
 * 显示优先于调试输出
+* Shell 负责运行时调试，不影响采样主链路
 * `MonitorTask` 属于后台诊断任务，不应影响采样和显示
 
 ---
@@ -184,11 +207,12 @@ typedef struct
 } BME280_Data_t;
 ```
 
-关键约束：
+关键状态：
 
 * 使用 Queue 传递传感器数据
 * 已删除全局 `sensor` 共享变量
-* 不允许重新引入全局共享传感器数据
+* 新增 `BME280_Data_t g_latestData;` 用于 Shell 查询和状态展示
+* `g_latestData` 不替代 Queue
 
 主链路：
 
@@ -212,8 +236,19 @@ Key(EXTI0)
   -> OLED Page Switch
 ```
 
+Shell链路：
+
+```text
+USART1 RX Interrupt
+  -> shellRxBuffer
+  -> shellQueue
+  -> ShellTask
+  -> APP_ShellProcess(cmd)
+```
+
 说明：
 
 * 采样采用 `Timer + Semaphore` 事件驱动
 * 不使用轮询，不使用 `osDelay(1000)` 定时采样
 * `DisplayTask` 读取 Queue 时不再永久阻塞，以保证页面切换响应
+* 中断里只做接收和投递，复杂命令解析放在 `ShellTask`

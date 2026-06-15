@@ -20,7 +20,15 @@
 /* Includes ------------------------------------------------------------------*/
 #include "usart.h"
 
+#include "app_shared.h"
+#include "cmsis_os2.h"
+
 /* USER CODE BEGIN 0 */
+uint8_t uartRxChar;
+
+char shellRxBuffer[32];
+
+uint8_t shellRxIndex = 0;
 
 /* USER CODE END 0 */
 
@@ -51,6 +59,11 @@ void MX_USART1_UART_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN USART1_Init 2 */
+  HAL_UART_Receive_IT(
+        &huart1,
+        &uartRxChar,
+        1);
+
 
   /* USER CODE END USART1_Init 2 */
 
@@ -83,6 +96,9 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+    /* USART1 interrupt Init */
+    HAL_NVIC_SetPriority(USART1_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(USART1_IRQn);
   /* USER CODE BEGIN USART1_MspInit 1 */
 
   /* USER CODE END USART1_MspInit 1 */
@@ -106,6 +122,8 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
     */
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_9|GPIO_PIN_10);
 
+    /* USART1 interrupt Deinit */
+    HAL_NVIC_DisableIRQ(USART1_IRQn);
   /* USER CODE BEGIN USART1_MspDeInit 1 */
 
   /* USER CODE END USART1_MspDeInit 1 */
@@ -135,5 +153,47 @@ int __io_putchar(int ch)
 
   return ch;
 }
+
+void HAL_UART_RxCpltCallback(
+    UART_HandleTypeDef *huart)
+{
+  if(huart->Instance == USART1)
+  {
+    HAL_UART_Transmit(
+        &huart1,
+        &uartRxChar,
+        1,
+        10);
+
+    if(uartRxChar == '\r')
+    {
+      shellRxBuffer[shellRxIndex] = '\0';
+
+      osMessageQueuePut(
+          shellQueueHandle,
+          shellRxBuffer,
+          0,
+          0);
+
+      shellRxIndex = 0;
+    }
+    else
+    {
+      if(shellRxIndex <
+         sizeof(shellRxBuffer) - 1)
+      {
+        shellRxBuffer[shellRxIndex++] =
+            uartRxChar;
+      }
+    }
+
+    HAL_UART_Receive_IT(
+        &huart1,
+        &uartRxChar,
+        1);
+  }
+}
+
+
 /* USER CODE END 1 */
 
