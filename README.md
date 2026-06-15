@@ -1,16 +1,16 @@
 # STM32 环境监测系统
 
-基于 `STM32F103C8T6` 的嵌入式环境监测项目，使用 `BME280` 采集温度、湿度和气压，通过 `SSD1306 OLED` 显示，并结合 `FreeRTOS` 实现多任务调度、消息通信和资源同步。
+基于 `STM32F103C8T6` 的嵌入式环境监测项目。系统使用 `BME280` 采集温度、湿度和气压，通过 `SSD1306 OLED` 实时显示，并借助 `FreeRTOS` 完成多任务调度、消息通信和资源同步。
 
 当前版本：`v2.0`
 
-## 项目目标
+## 项目亮点
 
-- 完成 BME280 传感器驱动与补偿算法
-- 在 OLED 上实时显示环境数据
-- 使用 FreeRTOS 组织采样、显示、调试和监控任务
-- 通过 Queue、Mutex、Semaphore、Timer 和 Event Flags 构建稳定的任务协作链路
-- 提供 UART Shell 方便运行时调试
+- `BME280` 温度 / 湿度 / 气压补偿算法完整实现
+- `OLED` 双页面显示，兼顾环境数据和系统状态
+- `FreeRTOS` 多任务架构清晰，便于扩展
+- `Queue + Mutex + Semaphore + Timer + Event Flags` 组合使用
+- `UART Shell` 支持运行时查询和调试
 
 ## 硬件平台
 
@@ -29,7 +29,7 @@
 - `App` 负责业务逻辑、数据处理、显示和 Shell 命令处理
 - `RTOS` 负责任务创建、调度与同步对象管理
 
-主调用链路：
+核心调用链路：
 
 ```text
 SensorTimer
@@ -60,7 +60,7 @@ USART1 RX Interrupt
   -> APP_ShellProcess(cmd)
 ```
 
-## 当前功能
+## 功能清单
 
 ### 传感器采集
 
@@ -158,8 +158,7 @@ Core/
 - [LEARNING_LOG.md](/Users/as/STM32/week1/LEARNING_LOG.md)
 - [BME280学习笔记.md](/Users/as/STM32/week1/BME280学习笔记.md)
 
-## 已知版本
+## 版本演进
 
 - `v1.0`：BME280 + OLED + FreeRTOS + Mutex 双任务架构
 - `v2.0`：Queue、Timer、Semaphore、Event Flags、UART Shell、页面切换优化
-
