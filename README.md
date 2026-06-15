@@ -1,260 +1,165 @@
-# STM32F103 + FreeRTOS + BME280 环境监测系统
+# STM32 环境监测系统
 
-## 项目简介
+基于 `STM32F103C8T6` 的嵌入式环境监测项目，使用 `BME280` 采集温度、湿度和气压，通过 `SSD1306 OLED` 显示，并结合 `FreeRTOS` 实现多任务调度、消息通信和资源同步。
 
-基于 STM32F103C8T6 开发的嵌入式环境监测系统。
+当前版本：`v2.0`
 
-项目使用 BME280 传感器采集温度、湿度和气压数据，通过 SSD1306 OLED 实时显示，并基于 FreeRTOS 实现多任务调度与资源管理。
+## 项目目标
 
-本项目重点在于：
-
-- BME280 驱动开发
-- Bosch 官方补偿算法实现
-- FreeRTOS 多任务设计
-- I2C 总线资源共享
-- Mutex 互斥锁同步机制
+- 完成 BME280 传感器驱动与补偿算法
+- 在 OLED 上实时显示环境数据
+- 使用 FreeRTOS 组织采样、显示、调试和监控任务
+- 通过 Queue、Mutex、Semaphore、Timer 和 Event Flags 构建稳定的任务协作链路
+- 提供 UART Shell 方便运行时调试
 
 ## 硬件平台
 
-### MCU
-
-- STM32F103C8T6
-
-### 传感器
-
-- BME280
-  - 温度
-  - 湿度
-  - 气压
-
-### 显示器
-
-- SSD1306 OLED
-
-### 通信接口
-
-- I2C1
-
-BME280 与 OLED 共用同一条 I2C 总线。
+- MCU: `STM32F103C8T6`
+- 传感器: `BME280`
+- 显示屏: `SSD1306 OLED`
+- 通信接口: `I2C1`
+- 调试串口: `USART1`
+- 按键输入: `PA0 / EXTI0`
 
 ## 软件架构
 
+项目采用 `Driver + App + RTOS` 分层：
+
+- `Driver` 负责寄存器访问、I2C 读写和外设底层驱动
+- `App` 负责业务逻辑、数据处理、显示和 Shell 命令处理
+- `RTOS` 负责任务创建、调度与同步对象管理
+
+主调用链路：
+
 ```text
-+-------------------+
-|    DisplayTask    |
-+---------+---------+
-          |
-          v
-      OLED SSD1306
-
-+-------------------+
-|    SensorTask     |
-+---------+---------+
-          |
-          v
-        BME280
-
-     FreeRTOS
-          |
-          v
-      I2C Mutex
-          |
-          v
-       I2C1 Bus
+SensorTimer
+  -> SensorSem
+  -> SensorTask
+  -> sensorQueue
+  -> DisplayTask
+  -> OLED
 ```
 
-## 项目结构
+按键链路：
 
 ```text
-App
-├── Inc
-│   └── app_display.h
-│
-└── Src
-    └── app_display.c
+Key(EXTI0)
+  -> HAL_GPIO_EXTI_Callback
+  -> osEventFlagsSet(DisplayEventHandle, DISPLAY_EVENT_KEY)
+  -> DisplayTask
+  -> 页面切换
+```
 
-Core
-├── Inc
+Shell 链路：
+
+```text
+USART1 RX Interrupt
+  -> shellRxBuffer
+  -> shellQueue
+  -> ShellTask
+  -> APP_ShellProcess(cmd)
+```
+
+## 当前功能
+
+### 传感器采集
+
+- BME280 温度补偿
+- BME280 湿度补偿
+- BME280 气压补偿
+- 原始数据到显示值的格式转换
+
+### OLED 显示
+
+- 页面 0: 温度 / 湿度 / 气压
+- 页面 1: Stack Monitor / Free Heap
+- 仅在页面切换时清屏，减少闪屏
+
+### FreeRTOS 任务
+
+- `SensorTask`：负责采样与数据更新
+- `DisplayTask`：负责 OLED 刷新与页面切换
+- `ShellTask`：负责串口命令解析
+- `MonitorTask`：负责后台状态监控
+
+### RTOS 对象
+
+- `Queue`
+- `Mutex`
+- `Semaphore`
+- `Software Timer`
+- `Event Flags`
+
+### UART Shell 命令
+
+- `help`
+- `version`
+- `all`
+- `temp`
+- `hum`
+- `press`
+- `stack`
+- `heap`
+
+示例输出：
+
+```text
+EnvMonitor v2.0
+T:25.36C
+H:42.58%
+P:1008.01hPa
+```
+
+## 目录结构
+
+```text
+App/
+├── Inc/
+│   ├── app_display.h
+│   ├── app_sensor.h
+│   ├── app_shared.h
+│   └── app_shell.h
+└── Src/
+    ├── app_display.c
+    ├── app_sensor.c
+    └── app_shell.c
+
+Core/
+├── Inc/
 │   ├── bme280.h
 │   ├── oled.h
 │   └── ...
-│
-└── Src
+└── Src/
     ├── bme280.c
     ├── freertos.c
     ├── oled.c
     └── ...
 ```
 
-## 已实现功能
-
-### BME280 驱动
-
-实现：
-
-- `BME280_Init()`
-- `BME280_ReadTemperature()`
-- `BME280_ReadHumidity()`
-- `BME280_ReadPressure()`
-- `BME280_ReadData()`
-
-支持：
-
-- 温度补偿
-- 湿度补偿
-- 气压补偿
-- 校准参数自动解析
-
-### OLED 显示
-
-实时显示：
-
-```text
-T:25.36C
-H:42.58%
-P:1008.01hPa
-```
-
-支持：
-
-- 负温度显示
-- 小数显示
-- 自动格式化输出
-
-### FreeRTOS
-
-创建两个任务：
-
-#### SensorTask
-
-功能：
-
-- 周期读取 BME280 数据
-- 更新传感器数据结构
-
-优先级：`Normal`
-
-#### DisplayTask
-
-功能：
-
-- 周期刷新 OLED
-
-优先级：`Below Normal`
-
-## I2C 资源共享问题
-
-### 问题现象
-
-在引入 FreeRTOS 后：
-
-- OLED 显示随机异常
-- 温湿度气压偶尔跳变
-- 数据刷新不稳定
-
-### 原因分析
-
-BME280 与 SSD1306 共用：
-
-```text
-I2C1
-```
-
-多个任务同时访问 I2C 外设时，会导致总线竞争。
-
-### 解决方案
-
-使用 FreeRTOS Mutex：
-
-```c
-osMutexAcquire(I2CMutex, osWaitForever);
-
-/* I2C 操作 */
-
-osMutexRelease(I2CMutex);
-```
-
-确保任意时刻只有一个任务访问 I2C。
-
-### 结果
-
-连续运行测试：
-
-- 无数据异常
-- 无 OLED 花屏
-- 无任务冲突
-
-系统稳定运行。
-
-## 开发过程中解决的问题
-
-### BME280
-
-- 湿度寄存器大小端问题
-- `dig_H4` / `dig_H5` 校准参数解析
-- 12 位补码符号扩展
-- Bosch 湿度公式整数溢出
-- Bosch 气压补偿算法实现
-
-### FreeRTOS
-
-- Task 创建与调度
-- 任务优先级配置
-- FreeRTOS Heap 使用
-- I2C 资源竞争
-- Mutex 同步机制
-
 ## 开发环境
 
 - STM32CubeMX
-- STM32 HAL Library
-- FreeRTOS
+- STM32CubeIDE
 - CLion
+- ST-Link
 - CMake
 - ARM GCC Toolchain
 
-## 后续计划
+## 运行说明
 
-### v1.1
+1. 用 STM32CubeMX / STM32CubeIDE 生成或同步工程配置
+2. 用支持 ARM GCC 的工具链编译工程
+3. 下载到 `STM32F103C8T6`
+4. 通过 `USART1` 连接串口终端，输入 `help` 查看命令
 
-- FreeRTOS Queue
-- 任务间消息通信
+## 学习记录
 
-### v1.2
+- [AI_CONTEXT.md](/Users/as/STM32/week1/AI_CONTEXT.md)
+- [LEARNING_LOG.md](/Users/as/STM32/week1/LEARNING_LOG.md)
+- [BME280学习笔记.md](/Users/as/STM32/week1/BME280学习笔记.md)
 
-- 软件定时器
-- Event Group
+## 已知版本
 
-### v1.3
+- `v1.0`：BME280 + OLED + FreeRTOS + Mutex 双任务架构
+- `v2.0`：Queue、Timer、Semaphore、Event Flags、UART Shell、页面切换优化
 
-- DMA 优化
-
-### v2.0
-
-- WiFi 数据上传
-- MQTT
-- Home Assistant 接入
-
-## 学习收获
-
-通过本项目掌握了：
-
-- STM32 外设驱动开发
-- I2C 通信
-- 数据手册阅读
-- Bosch 补偿算法实现
-- FreeRTOS 多任务设计
-- Mutex 资源同步
-- 嵌入式项目分层架构设计
-
-## 当前版本
-
-v1.0
-
-功能稳定运行：
-
-- BME280
-- SSD1306
-- FreeRTOS
-- Mutex
-- 双任务架构
