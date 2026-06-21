@@ -12,6 +12,267 @@
 
 ---
 
+# 阶段九：v2.1 Logger System
+
+---
+
+## 问题22：Shell 命令解析和中断接收耦合太紧
+
+最初理解：
+
+```text
+USART 中断收到什么
+就立刻在中断里处理什么
+```
+
+后来调整：
+
+```text
+USART1 中断
+↓
+Message Queue
+↓
+ShellTask
+↓
+命令解析
+```
+
+经验：
+
+```text
+中断只做接收和投递，
+复杂逻辑放到任务里处理。
+```
+
+---
+
+## 问题23：为什么要引入 Logger System
+
+最初疑问：
+
+```text
+已经有 Shell 了，
+为什么还要再做 Logger
+```
+
+理解后：
+
+```text
+Shell 负责交互
+Logger 负责历史记录
+```
+
+作用：
+
+```text
+保存采样历史
+支持 log 查询
+支持 clear 清空
+为后续故障分析做准备
+```
+
+经验：
+
+```text
+调试输出不等于历史记录，
+Logger 才是可回溯数据。
+```
+
+---
+
+## 问题24：Ring Buffer 怎么保存固定容量历史
+
+核心结构：
+
+```c
+typedef struct
+{
+    uint32_t tick;
+    BME280_Data_t data;
+} LoggerRecord_t;
+```
+
+关键变量：
+
+```c
+g_logBuffer[]
+g_logWriteIndex
+g_logCount
+```
+
+理解：
+
+```text
+固定数组循环使用
+写满后覆盖最旧数据
+```
+
+经验：
+
+```text
+Ring Buffer 是日志系统最常见的数据结构之一。
+```
+
+---
+
+## 问题25：不知道怎么按时间顺序读取历史记录
+
+核心代码：
+
+```c
+realIndex =
+    (g_logWriteIndex + index)
+    % LOGGER_MAX_RECORDS;
+```
+
+理解：
+
+```text
+index
+= 第几条历史记录
+
+realIndex
+= 数组真实下标
+```
+
+效果：
+
+```text
+最旧 -> 最新
+```
+
+经验：
+
+```text
+模运算是环形缓冲区的关键。
+```
+
+---
+
+## 问题26：log 命令为什么要单独实现
+
+新增命令：
+
+```text
+log
+clear
+```
+
+功能：
+
+```text
+log
+= 显示历史采样
+
+clear
+= 清空历史记录
+```
+
+输出字段：
+
+```text
+Tick
+Temperature
+Humidity
+Pressure
+```
+
+经验：
+
+```text
+Shell 的价值不只是调试，
+也可以逐步演化成产品级 CLI。
+```
+
+---
+
+## 问题27：Tick 时间戳有什么意义
+
+理解：
+
+```text
+osKernelGetTickCount()
+```
+
+用途：
+
+```text
+日志记录
+超时判断
+性能统计
+```
+
+经验：
+
+```text
+Tick 是 RTOS 最基础的时间基准。
+```
+
+---
+
+## 问题28：Logger 和 Queue 的关系
+
+当前链路：
+
+```text
+SensorTask
+↓
+Logger_Record()
+↓
+Ring Buffer
+```
+
+同时保留：
+
+```text
+SensorTask
+↓
+sensorQueue
+↓
+DisplayTask
+```
+
+理解：
+
+```text
+Queue 负责任务解耦
+Logger 负责历史保存
+```
+
+经验：
+
+```text
+数据传递和数据留存
+是两件不同的事。
+```
+
+---
+
+## 问题29：clear 命令为什么不仅是删数据
+
+实现：
+
+```c
+g_logCount = 0;
+g_logWriteIndex = 0;
+```
+
+效果：
+
+```text
+清空日志记录
+恢复空缓冲区状态
+```
+
+经验：
+
+```text
+清空操作也要同步重置索引，
+否则 Ring Buffer 状态会错乱。
+```
+
+---
+
 # 阶段一：BME280驱动开发
 
 ---

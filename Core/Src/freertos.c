@@ -28,6 +28,7 @@
 #include <stdio.h>
 
 #include "app_display.h"
+#include "app_logger.h"
 #include "app_sensor.h"
 #include "bme280.h"
 #include "app_shared.h"
@@ -249,6 +250,8 @@ void StartSensorTask(void *argument)
     APP_SensorRead(&txData);
 
     g_latestData = txData;
+
+    Logger_Record(&txData);
     
     osMessageQueuePut(
       sensorQueueHandle,
@@ -298,7 +301,7 @@ void StartDisplayTask(void *argument)
             sensorQueueHandle,
             &rxData,
             NULL,
-            100
+            500
         ) == osOK
     )
       {

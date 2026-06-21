@@ -7,7 +7,7 @@
 当前版本：
 
 ```text
-v2.0
+v2.1 Logger System
 ```
 
 当前已完成：
@@ -26,9 +26,13 @@ v2.0
 * OLED 刷新优化
 * UART Shell
 * 命令解析
+* Shell Command System
 * 系统状态查询
 * 传感器数据查询
 * 任务栈查询
+* Logger System
+* 环形日志缓冲区
+* log / clear 历史记录命令
 
 ---
 
@@ -81,6 +85,8 @@ App/
   app_display.h
   app_shell.c
   app_shell.h
+  app_logger.c
+  app_logger.h
 
 Drivers/
   bme280.c
@@ -139,12 +145,14 @@ temp
 hum
 press
 stack
+log
+clear
 ```
 
 输出示例：
 
 ```text
-EnvMonitor v2.0
+EnvMonitor v2.1 Logger System
 T:xx.xxC
 H:xx.xx%
 P:xxxx.xxhPa
@@ -183,6 +191,7 @@ Mutex
 Semaphore
 Software Timer
 Event Flags
+Ring Buffer
 ```
 
 设计原则：
@@ -213,6 +222,9 @@ typedef struct
 * 已删除全局 `sensor` 共享变量
 * 新增 `BME280_Data_t g_latestData;` 用于 Shell 查询和状态展示
 * `g_latestData` 不替代 Queue
+* 新增 `LoggerRecord_t` 保存 `tick + data`
+* `g_logBuffer[]` / `g_logWriteIndex` / `g_logCount` 管理历史日志
+* 每次采样后调用 `Logger_Record()`
 
 主链路：
 
@@ -220,6 +232,7 @@ typedef struct
 SensorTimer
   -> SensorSem
   -> SensorTask
+  -> Logger_Record()
   -> sensorQueue
   -> DisplayTask
   -> OLED
@@ -246,9 +259,20 @@ USART1 RX Interrupt
   -> APP_ShellProcess(cmd)
 ```
 
+Logger链路：
+
+```text
+SensorTask
+  -> APP_SensorRead(&txData)
+  -> g_latestData
+  -> Logger_Record(&txData)
+  -> Ring Buffer
+```
+
 说明：
 
 * 采样采用 `Timer + Semaphore` 事件驱动
-* 不使用轮询，不使用 `osDelay(1000)` 定时采样
-* `DisplayTask` 读取 Queue 时不再永久阻塞，以保证页面切换响应
-* 中断里只做接收和投递，复杂命令解析放在 `ShellTask`
+* Shell 命令通过 Message Queue 从中断侧传递到任务侧
+* Logger 采用 Ring Buffer 保存固定容量历史记录
+* `log` 命令按时间顺序输出最旧到最新的历史采样
+* `clear` 命令清空日志缓冲区

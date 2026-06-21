@@ -6,6 +6,7 @@
 #include "app_sensor.h"
 #include "app_shared.h"
 #include "FreeRTOS.h"
+#include "app_logger.h"
 #define FW_VERSION "v2.0"
 
 
@@ -23,6 +24,8 @@ void APP_ShellProcess(char *cmd)
         printf("stack\r\n");
         printf("all\r\n");
         printf("heap\r\n");
+        printf("log\r\n");
+        printf("clear\r\n");
     }
     else if(strcmp(cmd, "stack") == 0)
     {
@@ -108,6 +111,52 @@ void APP_ShellProcess(char *cmd)
         printf(
             "Free Heap: %u Bytes\r\n",
             (unsigned int)xPortGetFreeHeapSize());
+    }
+    else if(strcmp(cmd, "log") == 0)
+    {
+        uint8_t count;
+
+        printf("\r\n");
+
+        count = Logger_GetCount();
+
+        printf(
+            "Log Count: %d\r\n\r\n",
+            count);
+
+        for(uint8_t i = 0;
+            i < count;
+            i++)
+        {
+            LoggerRecord_t *rec =
+                Logger_GetRecord(i);
+
+            printf(
+                "[%lu ms] "
+                "T:%ld.%02ld "
+                "H:%ld.%02ld "
+                "P:%ld.%02ld\r\n",
+
+                rec->tick,
+
+                rec->data.temperature / 100,
+                labs(rec->data.temperature % 100),
+
+                rec->data.humidity / 1024,
+                (rec->data.humidity % 1024)
+                    * 100 / 1024,
+
+                rec->data.pressure / 256 / 100,
+                (rec->data.pressure / 256)
+                    % 100);
+        }
+    }
+    else if(strcmp(cmd,"clear")==0)
+    {
+        Logger_Clear();
+
+        printf(
+            "Logger cleared\r\n");
     }
     else
     {
