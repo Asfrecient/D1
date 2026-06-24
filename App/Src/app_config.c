@@ -1,12 +1,29 @@
 #include "app_config.h"
 
+#include <stdbool.h>
+#include <stdio.h>
+
+#include "app_storage.h"
 #include "cmsis_os2.h"
 
 static AppConfig_t g_config;
 
 void Config_Init(void)
 {
-    g_config.sampleIntervalMs = 1000;
+    if(Storage_LoadConfig(
+            &g_config))
+    {
+        printf(
+          "Config Loaded\r\n");
+    }
+    else
+    {
+        g_config.sampleIntervalMs =
+            1000;
+
+        printf(
+          "Default Config\r\n");
+    }
 }
 
 AppConfig_t *Config_Get(void)

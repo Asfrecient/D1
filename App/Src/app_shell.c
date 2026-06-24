@@ -8,6 +8,7 @@
 #include "app_shared.h"
 #include "FreeRTOS.h"
 #include "app_logger.h"
+#include "app_storage.h"
 #define FW_VERSION "v2.0"
 
 
@@ -29,6 +30,7 @@ void APP_ShellProcess(char *cmd)
         printf("clear\r\n");
         printf("show config\r\n");
         printf("set interval <ms>\r\n");
+        printf("save\r\n");
 
     }
     else if(strcmp(cmd, "stack") == 0)
@@ -200,6 +202,16 @@ void APP_ShellProcess(char *cmd)
                 "Interval = %lu ms\r\n",
                 interval);
         }
+    }
+
+    else if(strcmp(cmd,
+               "save") == 0)
+    {
+        Storage_SaveConfig(
+            Config_Get());
+
+        printf(
+            "Config Saved\r\n");
     }
 
     else
