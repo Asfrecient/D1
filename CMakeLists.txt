@@ -46,6 +46,8 @@ add_executable(${CMAKE_PROJECT_NAME}
         App/Inc/app_shell.h
         App/Inc/app_logger.h
         App/Src/app_logger.c
+        App/Inc/app_config.h
+        App/Src/app_config.c
 )
 
 # Add STM32CubeMX generated sources

@@ -28,6 +28,8 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "app_config.h"
 #include "bme280.h"
 #include "oled.h"
 #include "app_shared.h"
@@ -104,6 +106,7 @@ int main(void)
   BME280_Init();
   OLED_Init();
   OLED_Clear();
+  Config_Init();
 
   /* USER CODE END 2 */
 

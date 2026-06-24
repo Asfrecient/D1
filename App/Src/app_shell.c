@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "app_config.h"
 #include "app_sensor.h"
 #include "app_shared.h"
 #include "FreeRTOS.h"
@@ -26,6 +27,9 @@ void APP_ShellProcess(char *cmd)
         printf("heap\r\n");
         printf("log\r\n");
         printf("clear\r\n");
+        printf("show config\r\n");
+        printf("set interval <ms>\r\n");
+
     }
     else if(strcmp(cmd, "stack") == 0)
     {
@@ -158,6 +162,46 @@ void APP_ShellProcess(char *cmd)
         printf(
             "Logger cleared\r\n");
     }
+    else if(strcmp(cmd, "show config") == 0||
+        strcmp(cmd, "config") == 0)
+    {
+        AppConfig_t *cfg = Config_Get();
+
+        printf("\r\n");
+        printf("===== CONFIG =====\r\n");
+        printf("Sample Interval : %lu ms\r\n",
+               cfg->sampleIntervalMs);
+        printf("==================\r\n");
+    }
+    else if(strncmp(cmd,
+                "set interval ",
+                13) == 0)
+    {
+        uint32_t interval =
+    atoi(&cmd[13]);
+
+        if(interval == 0)
+        {
+            printf(
+                "Usage: set interval <ms>\r\n");
+        }
+        else if(interval < 100 ||
+                interval > 60000)
+        {
+            printf(
+                "Range: 100~60000 ms\r\n");
+        }
+        else
+        {
+            Config_SetSampleInterval(
+                interval);
+
+            printf(
+                "Interval = %lu ms\r\n",
+                interval);
+        }
+    }
+
     else
     {
         printf("Unknown Command\r\n");

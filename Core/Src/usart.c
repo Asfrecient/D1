@@ -159,23 +159,28 @@ void HAL_UART_RxCpltCallback(
 {
   if(huart->Instance == USART1)
   {
-    HAL_UART_Transmit(
+    uint8_t receivedChar = uartRxChar;
+
+    HAL_UART_Receive_IT(
         &huart1,
         &uartRxChar,
-        1,
-        10);
+        1);
 
-    if(uartRxChar == '\r')
+    if((receivedChar == '\r') ||
+       (receivedChar == '\n'))
     {
-      shellRxBuffer[shellRxIndex] = '\0';
+      if(shellRxIndex > 0)
+      {
+        shellRxBuffer[shellRxIndex] = '\0';
 
-      osMessageQueuePut(
-          shellQueueHandle,
-          shellRxBuffer,
-          0,
-          0);
+        osMessageQueuePut(
+            shellQueueHandle,
+            shellRxBuffer,
+            0,
+            0);
 
-      shellRxIndex = 0;
+        shellRxIndex = 0;
+      }
     }
     else
     {
@@ -183,14 +188,9 @@ void HAL_UART_RxCpltCallback(
          sizeof(shellRxBuffer) - 1)
       {
         shellRxBuffer[shellRxIndex++] =
-            uartRxChar;
+            receivedChar;
       }
     }
-
-    HAL_UART_Receive_IT(
-        &huart1,
-        &uartRxChar,
-        1);
   }
 }
 
