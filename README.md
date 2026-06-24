@@ -1,16 +1,19 @@
 # STM32 环境监测系统
 
-基于 `STM32F103C8T6` 的嵌入式环境监测项目。系统使用 `BME280` 采集温度、湿度和气压，通过 `SSD1306 OLED` 实时显示，并借助 `FreeRTOS` 完成多任务调度、消息通信和资源同步。
+基于 `STM32F103C8T6` 的嵌入式环境监测项目。系统使用 `BME280` 采集温度、湿度和气压，通过 `SSD1306 OLED` 实时显示，并借助 `FreeRTOS` 完成多任务调度、消息通信、配置管理与配置持久化。
 
-当前版本：`v2.0`
+当前版本：`v3.0.1`
 
 ## 项目亮点
 
 - `BME280` 温度 / 湿度 / 气压补偿算法完整实现
-- `OLED` 双页面显示，兼顾环境数据和系统状态
-- `FreeRTOS` 多任务架构清晰，便于扩展
-- `Queue + Mutex + Semaphore + Timer + Event Flags` 组合使用
-- `UART Shell` 支持运行时查询和调试
+- `OLED` 双页面显示，兼顾环境数据和系统运行状态
+- `FreeRTOS` 多任务架构清晰，采样、显示、Shell、监控职责分离
+- `Queue + Mutex + Semaphore + Software Timer + Event Flags` 组合使用
+- `UART Shell` 支持运行时查询、调试、参数修改
+- `Logger System` 支持历史记录查询与清空
+- `Config System` 支持采样周期运行时修改
+- `app_storage` 支持配置写入 MCU 内部 Flash，实现掉电保存
 
 ## 硬件平台
 
@@ -26,15 +29,17 @@
 项目采用 `Driver + App + RTOS` 分层：
 
 - `Driver` 负责寄存器访问、I2C 读写和外设底层驱动
-- `App` 负责业务逻辑、数据处理、显示和 Shell 命令处理
+- `App` 负责采样、显示、日志、配置、存储和 Shell 逻辑
 - `RTOS` 负责任务创建、调度与同步对象管理
 
-核心调用链路：
+核心采样链路：
 
 ```text
 SensorTimer
   -> SensorSem
   -> SensorTask
+  -> APP_SensorRead()
+  -> Logger_Record()
   -> sensorQueue
   -> DisplayTask
   -> OLED
@@ -58,6 +63,28 @@ USART1 RX Interrupt
   -> shellQueue
   -> ShellTask
   -> APP_ShellProcess(cmd)
+```
+
+配置持久化链路：
+
+```text
+set interval <ms>
+  -> Config_SetSampleInterval()
+  -> SensorTimer stop/start
+
+save
+  -> Storage_SaveConfig()
+  -> HAL_FLASHEx_Erase()
+  -> HAL_FLASH_Program()
+```
+
+启动加载链路：
+
+```text
+Config_Init()
+  -> Storage_LoadConfig()
+  -> valid: 使用保存值
+  -> invalid: 使用默认值 1000ms
 ```
 
 ## 功能清单
@@ -90,7 +117,15 @@ USART1 RX Interrupt
 - `Software Timer`
 - `Event Flags`
 
-### UART Shell 命令
+### Logger 与配置
+
+- `log`：查看历史采样记录
+- `clear`：清空日志缓冲区
+- `show config` / `config`：查看当前配置
+- `set interval <ms>`：修改采样周期
+- `save`：保存当前配置到内部 Flash
+
+### 当前 Shell 命令
 
 - `help`
 - `version`
@@ -100,29 +135,53 @@ USART1 RX Interrupt
 - `press`
 - `stack`
 - `heap`
+- `log`
+- `clear`
+- `show config`
+- `config`
+- `set interval <ms>`
+- `save`
 
-示例输出：
+## 持久化设计
+
+当前仅保存一个配置项：
 
 ```text
-EnvMonitor v2.0
-T:25.36C
-H:42.58%
-P:1008.01hPa
+sampleIntervalMs
 ```
+
+存储方式：
+
+- 使用 MCU 内部 Flash 最后一页附近地址 `0x0800FC00`
+- 写入结构包含 `magic + AppConfig_t`
+- 上电先检查 `magic`，通过后才恢复配置
+- 当前默认采样周期为 `1000ms`
+
+这样可以实现：
+
+- 运行中用 `set interval` 修改周期
+- 确认无误后用 `save` 写入 Flash
+- 系统重启后自动恢复上次保存的周期
 
 ## 目录结构
 
 ```text
 App/
 ├── Inc/
+│   ├── app_config.h
 │   ├── app_display.h
+│   ├── app_logger.h
 │   ├── app_sensor.h
 │   ├── app_shared.h
-│   └── app_shell.h
+│   ├── app_shell.h
+│   └── app_storage.h
 └── Src/
+    ├── app_config.c
     ├── app_display.c
+    ├── app_logger.c
     ├── app_sensor.c
-    └── app_shell.c
+    ├── app_shell.c
+    └── app_storage.c
 
 Core/
 ├── Inc/
@@ -147,18 +206,21 @@ Core/
 
 ## 运行说明
 
-1. 用 STM32CubeMX / STM32CubeIDE 生成或同步工程配置
-2. 用支持 ARM GCC 的工具链编译工程
-3. 下载到 `STM32F103C8T6`
-4. 通过 `USART1` 连接串口终端，输入 `help` 查看命令
+1. 用 STM32CubeMX / STM32CubeIDE 生成或同步工程配置。
+2. 使用支持 ARM GCC 的工具链编译工程。
+3. 下载到 `STM32F103C8T6` 开发板。
+4. 通过 `USART1` 连接串口终端，输入 `help` 查看命令。
+5. 需要掉电保存采样周期时，先执行 `set interval <ms>`，再执行 `save`。
 
-## 学习记录
+## 文档入口
 
 - [AI_CONTEXT.md](/Users/as/STM32/week1/AI_CONTEXT.md)
 - [LEARNING_LOG.md](/Users/as/STM32/week1/LEARNING_LOG.md)
-- [BME280学习笔记.md](/Users/as/STM32/week1/BME280学习笔记.md)
 
 ## 版本演进
 
-- `v1.0`：BME280 + OLED + FreeRTOS + Mutex 双任务架构
+- `v1.0`：BME280 + OLED + FreeRTOS 基础双任务架构
 - `v2.0`：Queue、Timer、Semaphore、Event Flags、UART Shell、页面切换优化
+- `v2.1`：Logger System + Ring Buffer + `log/clear`
+- `v2.2`：Config System + 采样周期运行时修改
+- `v3.0.1`：`app_storage` + 配置保存/加载 + `save` 命令

@@ -7,8 +7,256 @@
 目的：
 
 * 避免重复踩坑
-* 帮助AI快速理解项目历史
+* 帮助 AI 快速理解项目历史
 * 形成个人经验积累
+
+---
+
+# 阶段十一：v3.0.1 Storage Config Save/Load
+
+---
+
+## 问题39：为什么 Config System 做完以后还要继续做 Storage
+
+最初状态：
+
+```text
+set interval 500
+```
+
+现象：
+
+```text
+重启后又回到 1000ms
+```
+
+理解：
+
+```text
+Config 只解决“运行时可修改”，
+Storage 才解决“掉电后还能保留”。
+```
+
+经验：
+
+```text
+配置系统如果不能持久化，
+就还只是调试参数，不算完整配置。
+```
+
+---
+
+## 问题40：为什么要把存储逻辑单独做成 app_storage 模块
+
+新增文件：
+
+```text
+app_storage.h
+app_storage.c
+```
+
+职责：
+
+```text
+保存配置
+加载配置
+封装 Flash 读写细节
+```
+
+理解：
+
+```text
+Shell 只负责发命令，
+Config 只负责管理参数，
+Flash 细节应由 Storage 单独承担。
+```
+
+经验：
+
+```text
+不要把“业务配置”和“底层存储”写死在一个模块里。
+```
+
+---
+
+## 问题41：为什么加载配置时不能直接信任 Flash 内容
+
+当前做法：
+
+```text
+读取固定地址数据
+先检查 magic
+magic 正确才认为配置有效
+```
+
+关键常量：
+
+```text
+STORAGE_FLASH_ADDR = 0x0800FC00
+STORAGE_MAGIC      = 0x44413130
+```
+
+理解：
+
+```text
+Flash 上电后的内容不一定就是合法配置，
+必须先判断“这是不是我们自己写进去的数据”。
+```
+
+经验：
+
+```text
+做持久化时，数据结构之外还要有“有效性标记”。
+```
+
+---
+
+## 问题42：为什么 Config_Init() 要先 load，失败再给默认值
+
+当前逻辑：
+
+```text
+Storage_LoadConfig(&g_config)
+成功 -> Config Loaded
+失败 -> sampleIntervalMs = 1000
+```
+
+理解：
+
+```text
+默认值不是第一选择，
+而是“没有历史配置时的回退方案”。
+```
+
+经验：
+
+```text
+初始化代码应该先尝试恢复状态，
+再考虑默认状态。
+```
+
+---
+
+## 问题43：为什么 save 命令只保存当前配置，而不是顺便修改配置
+
+当前链路：
+
+```text
+set interval <ms>  -> 修改运行时参数
+save               -> 持久化当前参数
+```
+
+理解：
+
+```text
+“改当前状态”和“写入非易失存储”是两个动作，
+分开设计会更清晰，也更方便调试。
+```
+
+经验：
+
+```text
+持久化动作最好显式触发，
+不要让每次参数变化都自动擦写 Flash。
+```
+
+---
+
+## 问题44：为什么写 Flash 前必须先擦除
+
+当前流程：
+
+```text
+HAL_FLASH_Unlock()
+HAL_FLASHEx_Erase()
+HAL_FLASH_Program()
+HAL_FLASH_Lock()
+```
+
+理解：
+
+```text
+STM32 内部 Flash 不是普通 RAM，
+写入前需要先解锁、擦页，再按字写入。
+```
+
+经验：
+
+```text
+做 MCU 持久化时，要先按芯片 Flash 规则设计流程，
+不能把它当普通内存使用。
+```
+
+---
+
+## 问题45：为什么 set interval 和 save 要分两条命令配合
+
+使用流程：
+
+```text
+set interval 2000
+show config
+save
+```
+
+效果：
+
+```text
+当前采样周期立即变成 2000ms，
+并且下次上电还能恢复 2000ms。
+```
+
+理解：
+
+```text
+先改运行时行为，
+再决定是否固化到 Flash，
+这更像真实产品里的“应用/保存设置”。
+```
+
+经验：
+
+```text
+命令系统开始支持“修改 + 保存”之后，
+软件就从调试工具往可配置系统演进了。
+```
+
+---
+
+## 当前掌握内容
+
+已掌握：
+
+```text
+FreeRTOS Task
+Queue
+Semaphore
+Mutex
+EventFlags
+Software Timer
+UART Interrupt
+Shell Framework
+Logger System
+Ring Buffer
+Config System
+Internal Flash Storage
+Config Save/Load
+```
+
+下一阶段：
+
+```text
+v3.1 Storage Robustness
+```
+
+目标：
+
+```text
+save 失败处理
+load/reset 命令
+更多配置项持久化
+边界与掉电场景验证
+```
 
 ---
 
