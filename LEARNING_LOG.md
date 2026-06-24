@@ -12,6 +12,323 @@
 
 ---
 
+# 阶段十：v2.2 Config System
+
+---
+
+## 问题30：为什么不能把采样周期写死在代码里
+
+最初写法：
+
+```c
+osTimerStart(..., 1000);
+```
+
+新的理解：
+
+```text
+采样周期属于运行时配置，
+不应该散落在业务代码里。
+```
+
+改为：
+
+```text
+Config_Get()->sampleIntervalMs
+```
+
+经验：
+
+```text
+配置和业务逻辑要分离。
+```
+
+---
+
+## 问题31：Config 模块为什么要单独封装
+
+新增文件：
+
+```text
+app_config.h
+app_config.c
+```
+
+职责：
+
+```text
+保存配置
+读取配置
+修改配置
+```
+
+理解：
+
+```text
+Shell 不直接改底层资源，
+而是通过 Config 模块统一调度。
+```
+
+经验：
+
+```text
+统一入口能让后续扩展更稳。
+```
+
+---
+
+## 问题32：软件定时器为什么适合控制采样
+
+当前链路：
+
+```text
+SensorTimer
+↓
+Semaphore
+↓
+SensorTask
+↓
+APP_SensorRead()
+```
+
+理解：
+
+```text
+Timer 负责周期，
+Task 负责执行。
+```
+
+经验：
+
+```text
+不要用任务自己死等周期。
+```
+
+---
+
+## 问题33：怎么让修改采样周期立即生效
+
+新增接口：
+
+```c
+Config_SetSampleInterval()
+```
+
+动作：
+
+```text
+停止 SensorTimer
+使用新周期重新启动 SensorTimer
+```
+
+效果：
+
+```text
+修改后无需重启系统，
+新周期立即生效。
+```
+
+经验：
+
+```text
+运行时配置变化
+应该直接反映到调度层。
+```
+
+---
+
+## 问题34：Shell 为什么要能控制系统行为
+
+新增命令：
+
+```text
+show config
+config
+set interval
+```
+
+理解：
+
+```text
+Shell 不只是只读调试口，
+也可以变成配置入口。
+```
+
+经验：
+
+```text
+CLI 一旦能写配置，
+系统就开始有产品感了。
+```
+
+---
+
+## 问题35：参数输入为什么必须校验
+
+范围限制：
+
+```text
+100 ~ 60000 ms
+```
+
+非法输入：
+
+```text
+set interval abc
+```
+
+处理：
+
+```text
+Usage: set interval <ms>
+```
+
+经验：
+
+```text
+所有用户输入都不能直接信任。
+```
+
+---
+
+## 问题36：atoi() 为什么不够安全
+
+问题：
+
+```text
+atoi("abc")
+```
+
+结果：
+
+```text
+0
+```
+
+风险：
+
+```text
+非法输入可能被误当成合法配置。
+```
+
+经验：
+
+```text
+需要 Usage 检查和范围检查配合使用。
+```
+
+---
+
+## 问题37：UART 中断里为什么会丢字符
+
+现象：
+
+```text
+show config
+↓
+show confi
+```
+
+原因：
+
+```text
+重新开启接收太晚。
+```
+
+修复：
+
+```text
+先保存接收字符
+立即调用 HAL_UART_Receive_IT(...)
+再处理后续逻辑
+```
+
+经验：
+
+```text
+ISR 要尽快把接收链路续上。
+```
+
+---
+
+## 问题38：为什么要梳理整个系统架构
+
+当前链路：
+
+```text
+UART IRQ
+↓
+Shell Queue
+↓
+ShellTask
+↓
+Config Module
+↓
+SensorTimer
+↓
+SensorTask
+↓
+Logger
+↓
+Ring Buffer
+↓
+sensorQueue
+↓
+DisplayTask
+```
+
+理解：
+
+```text
+配置入口
+已经能影响采样、日志和显示链路。
+```
+
+经验：
+
+```text
+当模块变多时，
+先画出系统流向再继续扩展。
+```
+
+---
+
+## 当前掌握内容
+
+已掌握：
+
+```text
+FreeRTOS Task
+Queue
+Semaphore
+Mutex
+EventFlags
+Software Timer
+UART Interrupt
+Shell Framework
+Logger System
+Ring Buffer
+Config System
+```
+
+下一阶段：
+
+```text
+v3.0 Persistent Storage
+```
+
+目标：
+
+```text
+W25Q64
+Flash存储
+配置持久化
+Factory Reset
+参数恢复
+```
+
+---
+
 # 阶段九：v2.1 Logger System
 
 ---

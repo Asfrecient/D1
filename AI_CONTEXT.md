@@ -7,7 +7,7 @@
 当前版本：
 
 ```text
-v2.1 Logger System
+v2.2 Config System
 ```
 
 当前已完成：
@@ -33,6 +33,9 @@ v2.1 Logger System
 * Logger System
 * 环形日志缓冲区
 * log / clear 历史记录命令
+* Config System
+* show config / config / set interval 命令
+* 采样周期动态修改
 
 ---
 
@@ -87,6 +90,8 @@ App/
   app_shell.h
   app_logger.c
   app_logger.h
+  app_config.c
+  app_config.h
 
 Drivers/
   bme280.c
@@ -134,6 +139,7 @@ UART Shell：
 * USART1 RX Interrupt 接收命令
 * ShellTask 解析命令并调用 `APP_ShellProcess()`
 * 命令通过 Queue 从中断侧转给任务侧处理
+* Config 模块统一管理运行时配置
 
 支持命令：
 
@@ -147,12 +153,15 @@ press
 stack
 log
 clear
+show config
+config
+set interval
 ```
 
 输出示例：
 
 ```text
-EnvMonitor v2.1 Logger System
+EnvMonitor v2.2 Config System
 T:xx.xxC
 H:xx.xx%
 P:xxxx.xxhPa
@@ -192,6 +201,7 @@ Semaphore
 Software Timer
 Event Flags
 Ring Buffer
+Config
 ```
 
 设计原则：
@@ -200,6 +210,7 @@ Ring Buffer
 * 显示优先于调试输出
 * Shell 负责运行时调试，不影响采样主链路
 * `MonitorTask` 属于后台诊断任务，不应影响采样和显示
+* 运行时参数由 Config 模块统一管理，不直接写死在业务代码里
 
 ---
 
@@ -225,6 +236,8 @@ typedef struct
 * 新增 `LoggerRecord_t` 保存 `tick + data`
 * `g_logBuffer[]` / `g_logWriteIndex` / `g_logCount` 管理历史日志
 * 每次采样后调用 `Logger_Record()`
+* 新增 `AppConfig_t`，当前仅管理 `sampleIntervalMs`
+* `Config_SetSampleInterval()` 会重启 `SensorTimer`
 
 主链路：
 
@@ -237,6 +250,35 @@ SensorTimer
   -> DisplayTask
   -> OLED
 ```
+
+配置链路：
+
+```text
+ShellTask
+  -> Config API
+  -> SensorTimer stop/start
+  -> SensorTask
+```
+
+当前采样周期：
+
+```text
+sampleIntervalMs = 1000
+```
+
+下一阶段：
+
+```text
+v3.0 Persistent Storage
+```
+
+目标：
+
+* W25Q64 驱动
+* 配置保存
+* 配置加载
+* Factory Reset
+* 掉电保持配置
 
 按键链路：
 
