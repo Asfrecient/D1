@@ -31,6 +31,8 @@ void APP_ShellProcess(char *cmd)
         printf("show config\r\n");
         printf("set interval <ms>\r\n");
         printf("save\r\n");
+        printf("load\r\n");
+        printf("factory\r\n");
 
     }
     else if(strcmp(cmd, "stack") == 0)
@@ -212,6 +214,40 @@ void APP_ShellProcess(char *cmd)
 
         printf(
             "Config Saved\r\n");
+    }
+    else if (strcmp(cmd, "load") == 0)
+    {
+        AppConfig_t *cfg = Config_Get();
+
+        if (Storage_LoadConfig(cfg))
+        {
+            printf("Load OK\r\n");
+
+            //立刻可视化（很关键）
+            Config_Print(cfg);
+        }
+        else
+        {
+            printf("Load Failed\r\n");
+        }
+    }
+    else if (strcmp(cmd, "factory") == 0)
+    {
+        AppConfig_t *cfg = Config_Get();
+
+        // 恢复默认值（只改RAM）
+        Config_ResetDefault(cfg);
+
+        // 立刻写入Flash（关键）
+        if (Storage_SaveConfig(cfg))
+        {
+            printf("Factory OK\r\n");
+            Config_Print(cfg);
+        }
+        else
+        {
+            printf("Factory Failed\r\n");
+        }
     }
 
     else

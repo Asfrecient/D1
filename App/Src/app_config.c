@@ -46,3 +46,29 @@ void Config_SetSampleInterval(
         SensorTimerHandle,
         interval);
 }
+
+void Config_Print(AppConfig_t *cfg)
+{
+    if (cfg == NULL)
+    {
+        printf("Config: NULL\r\n");
+        return;
+    }
+
+    printf("===== CONFIG =====\r\n");
+
+    printf("sampleIntervalMs : %lu ms\r\n",
+           (unsigned long)cfg->sampleIntervalMs);
+
+    printf("==================\r\n");
+}
+
+
+//出厂设置,默认值
+void Config_ResetDefault(AppConfig_t *cfg)
+{
+    if (cfg == NULL)
+        return;
+
+    cfg->sampleIntervalMs = 1000;
+}

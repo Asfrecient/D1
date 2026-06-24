@@ -15,4 +15,8 @@ AppConfig_t *Config_Get(void);
 void Config_SetSampleInterval(
     uint32_t interval);
 
+void Config_Print(AppConfig_t *cfg);
+
+void Config_ResetDefault(AppConfig_t *cfg);
+
 #endif
